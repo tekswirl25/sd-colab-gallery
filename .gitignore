@@ -1,0 +1,8 @@
+models/
+outputs/
+.ipynb_checkpoints/
+*.ckpt
+*.safetensors
+*.pt
+*.bin
+*.onnx

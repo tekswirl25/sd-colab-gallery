@@ -45,3 +45,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: dummy commit for testing ([8f476af](https://github.com/tekswirl25/sd-colab-gallery/commit/8f476afba85268cecb899907b8b61f6813bd147b))
 
+
+## v0.1.2 (2025-09-21)
+
+### ✨ Added
+
+* add: release automation script and GitHub Actions workflow ([25cf883](https://github.com/tekswirl25/sd-colab-gallery/commit/25cf8839d3a34761c33079b2eae67e58de58cd61))
+

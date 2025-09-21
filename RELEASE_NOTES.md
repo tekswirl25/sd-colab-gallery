@@ -38,3 +38,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 - [ ] Draft mode (low-res fast preview)
 - [ ] Auto-zip outputs after each run
 - [ ] Unit tests for `utils` and `loaders`
+
+## v0.1.1 (2025-09-21)
+
+### 🛠 Fixed
+
+* fix: dummy commit for testing ([8f476af](https://github.com/tekswirl25/sd-colab-gallery/commit/8f476afba85268cecb899907b8b61f6813bd147b))
+

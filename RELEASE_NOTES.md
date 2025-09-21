@@ -52,3 +52,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * add: release automation script and GitHub Actions workflow ([25cf883](https://github.com/tekswirl25/sd-colab-gallery/commit/25cf8839d3a34761c33079b2eae67e58de58cd61))
 
+
+## v0.1.3 (2025-09-21)
+
+### 🛠 Fixed
+
+* fix: grant permissions for GitHub Actions to update release notes ([1fc2bb6](https://github.com/tekswirl25/sd-colab-gallery/commit/1fc2bb6d3ce5f52a78768b7dcfecde983bd67b68))
+

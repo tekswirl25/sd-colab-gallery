@@ -50,3 +50,30 @@ VARIANTS = {
         }
     }
 }
+
+# Добавить в scripts/config.py (после VARIANTS)
+VARIANT_MODELS = {
+    "SDXL": {
+        "txt2img":   "stabilityai/stable-diffusion-xl-base-1.0",
+        "img2img":   "stabilityai/stable-diffusion-xl-base-1.0",
+        "controlnet":"diffusers/controlnet-canny-sdxl-1.0",
+        "upscale":   "stabilityai/stable-diffusion-x4-upscaler",
+    },
+    "TURBO": {
+        "txt2img":   "stabilityai/sdxl-turbo",
+        "img2img":   "stabilityai/sdxl-turbo",
+        # Для ControlNet под Turbo используем SDXL base как базовую модель пайплайна:
+        "controlnet_model": "stabilityai/stable-diffusion-xl-base-1.0",
+        "controlnet":       "diffusers/controlnet-canny-sdxl-1.0",
+        "upscale":   "stabilityai/stable-diffusion-x4-upscaler",
+    },
+    "SD15": {
+        "txt2img":   "runwayml/stable-diffusion-v1-5",
+        "img2img":   "runwayml/stable-diffusion-v1-5",
+        "controlnet":"lllyasviel/sd-controlnet-canny",
+        "upscale":   "stabilityai/stable-diffusion-x4-upscaler",
+    },
+    # общие дефолты для окружения:
+    "device": "cuda",
+    "dtype":  "fp16",
+}

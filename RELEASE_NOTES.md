@@ -66,3 +66,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: update .gitignore to ignore .DS_Store ([5d41716](https://github.com/tekswirl25/sd-colab-gallery/commit/5d417168eb7a427325c9c8dc0a976b00ef336f9d))
 
+
+## v0.1.5 (2025-09-22)
+
+* add VARIANT_MODELS to config.py ([a960c0f](https://github.com/tekswirl25/sd-colab-gallery/commit/a960c0fc233794dfb1b84ad6aa3180e29b0fbb11))
+

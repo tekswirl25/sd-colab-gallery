@@ -1,0 +1,5 @@
+[
+  { "name": "photoreal", "prompt": "highly detailed, realistic lighting" },
+  { "name": "illustration", "prompt": "hand-drawn, ink outlines, watercolor shading" },
+  { "name": "anime", "prompt": "anime style, sharp lines, vibrant colors" }
+]

@@ -6,3 +6,6 @@ outputs/
 *.pt
 *.bin
 *.onnx
+archives/
+.DS_Store
+*/.DS_Store

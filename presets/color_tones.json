@@ -1,0 +1,5 @@
+[
+  { "name": "warm", "prompt": "warm golden light, cozy atmosphere" },
+  { "name": "cool", "prompt": "cold blue tones, cinematic mood" },
+  { "name": "vintage", "prompt": "faded retro palette, nostalgic look" }
+]

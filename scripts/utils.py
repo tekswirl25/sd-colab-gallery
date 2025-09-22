@@ -12,6 +12,7 @@ def base_name(prefix): return f"{prefix}_{ts_now()}"
 
 def save_image_and_meta(img: Image.Image, prefix: str, meta: dict, output_dir: str):
     try:
+        os.makedirs(output_dir, exist_ok=True)  # ← добавить
         stem = base_name(prefix)
         img_path = os.path.join(output_dir, f"{stem}.png")
         meta_path = os.path.join(output_dir, f"{stem}.json")

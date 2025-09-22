@@ -11,6 +11,7 @@ def create_app(output_dir):
     Flask-приложение для галереи и логов.
     """
     nest_asyncio.apply()
+    os.makedirs(output_dir, exist_ok=True) 
     app = Flask(__name__, static_folder=output_dir, static_url_path='/outputs')
 
     # Полный HTML шаблон карточек (как был в ячейке сервера)

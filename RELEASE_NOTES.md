@@ -83,3 +83,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: apply all modified files ([fa48705](https://github.com/tekswirl25/sd-colab-gallery/commit/fa4870525f0d83c57d3edbd0aa1c4f997de62417))
 
+
+## v0.1.8 (2025-09-22)
+
+### ✨ Added
+
+* add: SDXL Vintage Illustration FULL Pro Turbo Gallery notebook ([9ab11a7](https://github.com/tekswirl25/sd-colab-gallery/commit/9ab11a7896208d181c6b7d4171ff0b901fca4323))
+

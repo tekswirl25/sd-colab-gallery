@@ -1,3 +1,4 @@
 *.ipynb filter=clean-nb
 RELEASE_NOTES.md merge=theirs
+.version merge=theirs
 

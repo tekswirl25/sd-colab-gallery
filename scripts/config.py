@@ -1,4 +1,5 @@
-# scripts/config.py
+import os, torch
+from scripts.logger import log_info
 
 VARIANTS = {
     "SDXL": {
@@ -77,3 +78,65 @@ VARIANT_MODELS = {
     "device": "cuda",
     "dtype":  "fp16",
 }
+
+SUPPORTED_MODES = ("CPU", "GPU_BASIC", "GPU_OPTIMAL")
+
+
+def init_config(model_variant: str = "SDXL",
+                output_dir: str = "/content/outputs",
+                hf_token: str | None = None,
+                mode: str = "GPU_OPTIMAL"):
+    """
+    Централизованная инициализация конфига.
+    - Гарантирует наличие output_dir
+    - Настраивает токен HF (если передан или уже есть в окружении)
+    - Определяет DEVICE/DTYPE по mode
+    - Возвращает CONFIG, VARIANT, DEFAULTS, AUTO_UPSCALE
+    """
+
+    if mode not in SUPPORTED_MODES:
+        raise ValueError(f"Unsupported MODE='{mode}'. Use one of {SUPPORTED_MODES}")
+
+    # 1) Токен HF: аргумент > HF_TOKEN > HUGGING_FACE_HUB_TOKEN
+    env_hf_token = hf_token or os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    if env_hf_token:
+        os.environ["HF_TOKEN"] = env_hf_token
+        os.environ["HUGGING_FACE_HUB_TOKEN"] = env_hf_token
+        log_info("HF token is set via environment")
+
+    # 2) Папка вывода
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 3) Параметры варианта
+    VARIANT = VARIANTS[model_variant]
+    DEFAULTS = VARIANT["defaults"]
+    AUTO_UPSCALE = VARIANT["auto_upscale"]
+
+    # 4) Железо/точность по MODE
+    if mode == "CPU":
+        device = "cpu"
+        dtype = torch.float32
+    else:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        if device == "cpu":
+            # запрошен GPU-режим, но GPU недоступен — откат на CPU
+            log_info("GPU not available -> falling back to CPU mode")
+            dtype = torch.float32
+        else:
+            # оба GPU-режима используют fp16; отличие в политике оптимизаций на уровне пайплайнов
+            dtype = torch.float16
+
+    CONFIG = {
+        "MODE": mode,
+        "MODEL_VARIANT": model_variant,
+        "OUTPUT_DIR": output_dir,
+        "DEVICE": device,
+        "DTYPE": dtype,
+    }
+
+    log_info(
+        f"Config initialized: "
+        f"MODEL_VARIANT={model_variant}, MODE={mode}, OUTPUT_DIR={output_dir}, "
+        f"DEVICE={device}, DTYPE={dtype}"
+    )
+    return CONFIG, VARIANT, DEFAULTS, AUTO_UPSCALE

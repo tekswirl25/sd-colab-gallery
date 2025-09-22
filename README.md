@@ -6,3 +6,4 @@
 - `models/`, `outputs/` — локальные кэши/артефакты, в git не идут.
 
 > Тяжёлые веса (SD/SDXL/LoRA) в GitHub не храним. Держим ссылки на HF и скрипт скачивания.
+test amend workflow Mon Sep 22 16:35:23 PDT 2025

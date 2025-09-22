@@ -116,3 +116,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * Merge branch 'main' of github.com:tekswirl25/sd-colab-gallery ([e8ec468](https://github.com/tekswirl25/sd-colab-gallery/commit/e8ec468d8b7f7645c87c66a36bdb9999c0812022))
 
+
+## v0.1.14 (2025-09-22)
+
+* chore: update release notes [skip ci] ([07f4907](https://github.com/tekswirl25/sd-colab-gallery/commit/07f4907fb2822c1d31d5b6490765e6e4fcfbddf5))
+

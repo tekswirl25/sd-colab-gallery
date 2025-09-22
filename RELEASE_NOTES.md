@@ -104,3 +104,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * change: update .gitattributes ([c8d162a](https://github.com/tekswirl25/sd-colab-gallery/commit/c8d162ae3b1eec2f0f03ac5fcea4f2e1a5787efb))
 
+
+## v0.1.12 (2025-09-22)
+
+### 🔄 Changed
+
+* change: update version, release notes and add SDXL Vintage Illustration notebook ([c7f9ba9](https://github.com/tekswirl25/sd-colab-gallery/commit/c7f9ba9f8882e70c9560548c30d68ad44be842fb))
+

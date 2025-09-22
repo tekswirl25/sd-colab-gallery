@@ -59,3 +59,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: grant permissions for GitHub Actions to update release notes ([1fc2bb6](https://github.com/tekswirl25/sd-colab-gallery/commit/1fc2bb6d3ce5f52a78768b7dcfecde983bd67b68))
 
+
+## v0.1.4 (2025-09-22)
+
+### 🛠 Fixed
+
+* fix: update .gitignore to ignore .DS_Store ([5d41716](https://github.com/tekswirl25/sd-colab-gallery/commit/5d417168eb7a427325c9c8dc0a976b00ef336f9d))
+

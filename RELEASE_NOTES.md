@@ -71,3 +71,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * add VARIANT_MODELS to config.py ([a960c0f](https://github.com/tekswirl25/sd-colab-gallery/commit/a960c0fc233794dfb1b84ad6aa3180e29b0fbb11))
 
+
+## v0.1.6 (2025-09-22)
+
+* chore: set RELEASE_NOTES.md to always prefer remote version ([04d42c0](https://github.com/tekswirl25/sd-colab-gallery/commit/04d42c0a65b31d06cf95a9606556a3f995bb2632))
+

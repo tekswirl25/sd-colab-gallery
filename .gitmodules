@@ -1,0 +1,3 @@
+[submodule "tools/git-hooks"]
+	path = tools/git-hooks
+	url = git@github.com:tekswirl25/git-hooks-utils.git

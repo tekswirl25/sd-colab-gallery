@@ -152,3 +152,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * added gradio server ([d020ac5](https://github.com/tekswirl25/sd-colab-gallery/commit/d020ac5bc1ef8502b9278eed306bfab48ee55100))
 
+
+## v0.1.23 (2025-09-25)
+
+* chore: sync .gitignore & .archiveignore from templates ([3094ae7](https://github.com/tekswirl25/sd-colab-gallery/commit/3094ae79ca3cd5da63c50d2bd608640850bb367f))
+

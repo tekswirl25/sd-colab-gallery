@@ -22,9 +22,8 @@ ARCHIVE_FILE="$ARCHIVE_DIR/commit_${SHORT_HASH}.zip"
 
 mkdir -p "$ARCHIVE_DIR"
 
-# включаем только исходники/конфиги
-INCLUDE_REGEX='\.(py|ipynb|json|ya?ml|md)$'
-FILES="$(git ls-tree -r --name-only "$HASH" | grep -E "$INCLUDE_REGEX" || true)"
+# возьмём все tracked файлы на коммите
+FILES="$(git ls-tree -r --name-only "$HASH" || true)"
 
 # применим исключения из .archiveignore (regex-паттерны)
 if [[ -f "$repo_root/.archiveignore" ]]; then
@@ -41,7 +40,6 @@ fi
 
 # упаковка (zip → 7z; иначе сообщить)
 if command -v zip >/dev/null 2>&1; then
-  # передаём список файлов через stdin, чтобы не словить проблемы с пробелами
   echo "$FILES" | zip -q -@ "$ARCHIVE_FILE"
 elif command -v 7z >/dev/null 2>&1; then
   tmpfile="$(mktemp)"
@@ -51,6 +49,11 @@ elif command -v 7z >/dev/null 2>&1; then
 else
   echo "❌ No archiver found (zip or 7z). macOS: zip есть по умолчанию; Linux: sudo apt-get install zip"
   exit 1
+fi
+
+# добавляем локальные git hooks (если есть)
+if [ -d "$repo_root/.git/hooks" ]; then
+  zip -qr "$ARCHIVE_FILE" .git/hooks -x "*.sample"
 fi
 
 SIZE="$(du -h "$ARCHIVE_FILE" | awk '{print $1}')"

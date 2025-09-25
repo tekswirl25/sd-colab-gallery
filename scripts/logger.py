@@ -22,3 +22,12 @@ def log_error(msg): logger.error(msg)
 def log_debug(msg): logger.debug(msg)
 
 __all__ = ["log_info", "log_error", "log_debug", "LOG_FILE"]
+
+def get_last_logs(n=50):
+    """Возвращает последние n строк из файла лога."""
+    try:
+        with open(LOG_FILE, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        return lines[-n:]
+    except FileNotFoundError:
+        return ["<no log file>"]

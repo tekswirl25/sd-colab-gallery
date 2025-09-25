@@ -9,3 +9,12 @@ outputs/
 archives/
 .DS_Store
 */.DS_Store
+.version
+RELEASE_NOTES.md
+__pycache__/
+*.pyc
+*.pyo
+.vscode/
+.idea/
+*.log
+tmp/

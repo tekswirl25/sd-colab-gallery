@@ -1,26 +1,254 @@
-# модели
-\.ckpt$
-\.safetensors$
-\.pt$
-\.bin$
-\.onnx$
+# ---------------------------
+# Git internals
+# ---------------------------
+# glob
+.git/
+# regex
+^\.git/
 
-# картинки
-\.png$
-\.jpg$
-\.jpeg$
-\.gif$
-\.webp$
+# ---------------------------
+# System / IDE
+# ---------------------------
+# glob
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.bak
+*.tmp
+*.log
+*.out
+# regex
+^\.DS_Store$
+^Thumbs\.db$
+.*\.swp$
+.*\.swo$
+.*\.bak$
+.*\.tmp$
+.*\.log$
+.*\.out$
 
-# логи и артефакты
-\.log$
-^outputs/
-^tmp/
+# IDE configs
+# glob
+.vscode/
+.idea/
+*.iml
+# regex
+^\.vscode/
+^\.idea/
+.*\.iml$
+
+# ---------------------------
+# Python
+# ---------------------------
+# glob
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+# regex
+^__pycache__/
+.*\.pyc$
+.*\.pyo$
+.*\.pyd$
+^(\.venv|venv|env)/
+.*\.egg-info/
+^\.eggs/
 
-# секреты/служебное
+# ---------------------------
+# Node.js / JavaScript / TypeScript
+# ---------------------------
+# glob
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+# regex
+^node_modules/
+npm-debug\.log.*
+yarn-(debug|error)\.log.*
+pnpm-debug\.log.*
+package-lock\.json$
+yarn\.lock$
+pnpm-lock\.yaml$
+
+# ---------------------------
+# Java / Kotlin
+# ---------------------------
+# glob
+*.class
+*.jar
+*.war
+*.ear
+*.ser
+*.idx
+*.dat
+*.hprof
+target/
+out/
+build/
+# regex
+.*\.class$
+.*\.jar$
+.*\.war$
+.*\.ear$
+.*\.ser$
+.*\.idx$
+.*\.dat$
+.*\.hprof$
+^target/
+^out/
+^build/
+
+# ---------------------------
+# C / C++ / Go / Rust
+# ---------------------------
+# glob
+*.o
+*.obj
+*.so
+*.dll
+*.dylib
+*.exe
+*.a
+*.lib
+*.lo
+*.la
+*.gcda
+*.gcno
+*.gcov
+*.out
+*.elf
+# regex
+.*\.(o|obj|so|dll|dylib|exe|a|lib|lo|la|gcda|gcno|gcov|out|elf)$
+
+# Go
+# glob
+bin/
+*.test
+# regex
+^bin/
+.*\.test$
+
+# Rust
+# glob
+target/
+Cargo.lock
+# regex
+^target/
+Cargo\.lock$
+
+# ---------------------------
+# Data / Notebooks
+# ---------------------------
+# glob
+*.ipynb_checkpoints/
+*.sqlite
+*.db
+*.mdb
+*.pdb
+*.sql
+*.h5
+*.parquet
+*.feather
+*.arrow
+*.csv
+*.tsv
+# regex
+.*\.ipynb_checkpoints/
+.*\.sqlite$
+.*\.db$
+.*\.mdb$
+.*\.pdb$
+.*\.sql$
+.*\.h5$
+.*\.parquet$
+.*\.feather$
+.*\.arrow$
+.*\.csv$
+.*\.tsv$
+
+# ---------------------------
+# Project-specific (generic heavy dirs)
+# ---------------------------
+# glob
+archives/
+outputs/
+models/
+dist/
+coverage/
+docs/_build/
+# regex
+^archives/
+^outputs/
+^models/
+^dist/
+^coverage/
+^docs/_build/
+
+# ---------------------------
+# Secrets / sensitive
+# ---------------------------
+# glob
+.env
+*.key
+id_rsa
+id_ed25519
+# regex
 ^\.env$
-\.key$
+.*\.key$
 ^id_rsa
 ^id_ed25519
-^\.DS_Store$
+
+# ---------------------------
+# Models (ML/DL weights)
+# ---------------------------
+# glob
+*.ckpt
+*.safetensors
+*.pt
+*.bin
+*.onnx
+# regex
+.*\.ckpt$
+.*\.safetensors$
+.*\.pt$
+.*\.bin$
+.*\.onnx$
+
+# ---------------------------
+# Images (artifacts)
+# ---------------------------
+# glob
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+# regex
+.*\.png$
+.*\.jpg$
+.*\.jpeg$
+.*\.gif$
+.*\.webp$
+
+# ---------------------------
+# Logs / artifacts
+# ---------------------------
+# glob
+*.log
+outputs/
+tmp/
+# regex
+.*\.log$
+^outputs/
+^tmp/

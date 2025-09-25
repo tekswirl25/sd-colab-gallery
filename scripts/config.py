@@ -85,12 +85,13 @@ SUPPORTED_MODES = ("CPU", "GPU_BASIC", "GPU_OPTIMAL")
 def init_config(model_variant: str = "SDXL",
                 output_dir: str = "/content/outputs",
                 hf_token: str | None = None,
-                mode: str = "GPU_OPTIMAL"):
+                mode: str = "GPU_OPTIMAL",
+                env_mode: str = "GPU"):
     """
     Централизованная инициализация конфига.
     - Гарантирует наличие output_dir
     - Настраивает токен HF (если передан или уже есть в окружении)
-    - Определяет DEVICE/DTYPE по mode
+    - Определяет DEVICE/DTYPE по mode и env_mode
     - Возвращает CONFIG, VARIANT, DEFAULTS, AUTO_UPSCALE
     """
 
@@ -112,11 +113,11 @@ def init_config(model_variant: str = "SDXL",
     DEFAULTS = VARIANT["defaults"]
     AUTO_UPSCALE = VARIANT["auto_upscale"]
 
-    # 4) Железо/точность по MODE
-    if mode == "CPU":
+    # 4) Железо/точность по MODE + ENV_MODE
+    if env_mode == "CPU":
         device = "cpu"
         dtype = torch.float32
-    else:
+    else:  # GPU по умолчанию
         device = "cuda" if torch.cuda.is_available() else "cpu"
         if device == "cpu":
             # запрошен GPU-режим, но GPU недоступен — откат на CPU
@@ -136,7 +137,7 @@ def init_config(model_variant: str = "SDXL",
 
     log_info(
         f"Config initialized: "
-        f"MODEL_VARIANT={model_variant}, MODE={mode}, OUTPUT_DIR={output_dir}, "
+        f"MODEL_VARIANT={model_variant}, MODE={mode}, ENV_MODE={env_mode}, OUTPUT_DIR={output_dir}, "
         f"DEVICE={device}, DTYPE={dtype}"
     )
     return CONFIG, VARIANT, DEFAULTS, AUTO_UPSCALE

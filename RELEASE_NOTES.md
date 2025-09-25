@@ -147,3 +147,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: repo_init and server ([9639061](https://github.com/tekswirl25/sd-colab-gallery/commit/963906171e2e9caab39d39413d493fcf2795a44e))
 
+
+## v0.1.22 (2025-09-25)
+
+* added gradio server ([d020ac5](https://github.com/tekswirl25/sd-colab-gallery/commit/d020ac5bc1ef8502b9278eed306bfab48ee55100))
+

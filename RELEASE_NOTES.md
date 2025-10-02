@@ -164,3 +164,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * add: archive_commit.sh copied from git-hooks-utils ([7953366](https://github.com/tekswirl25/sd-colab-gallery/commit/795336639a9a7829afb82f9ac78a3e851f43aca4))
 
+
+## v0.1.25 (2025-10-02)
+
+### 🛠 Fixed
+
+* fix: archive_commit.sh ([6ee9614](https://github.com/tekswirl25/sd-colab-gallery/commit/6ee9614309049ec58a2369da4363e71ef5eef2e2))
+

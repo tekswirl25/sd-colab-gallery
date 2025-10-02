@@ -171,3 +171,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: archive_commit.sh ([6ee9614](https://github.com/tekswirl25/sd-colab-gallery/commit/6ee9614309049ec58a2369da4363e71ef5eef2e2))
 
+
+## v0.1.26 (2025-10-02)
+
+### 🛠 Fixed
+
+* fix: comment test in archive_commit.sh ([2b8e697](https://github.com/tekswirl25/sd-colab-gallery/commit/2b8e69766a9e1e0bddcdb371988db22edc44d166))
+

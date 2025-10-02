@@ -56,14 +56,14 @@ if [[ -z "${FILTERED//[$'\t\r\n ']/}" ]]; then
 fi
 
 # Test
-echo "FILES before filter:"
-echo "$FILES" | head -20
-
-echo "EXC patterns:"
-printf '%s\n' "${EXC[@]}" | head -20
-
-echo "FILES after filter:"
-echo "$FILTERED" | head -20
+# echo "FILES before filter:"
+# echo "$FILES" | head -20
+# 
+# echo "EXC patterns:"
+# printf '%s\n' "${EXC[@]}" | head -20
+#
+# echo "FILES after filter:"
+# echo "$FILTERED" | head -20
 # end of test
 
 # Упаковка

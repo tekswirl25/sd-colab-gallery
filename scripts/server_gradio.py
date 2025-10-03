@@ -24,10 +24,12 @@ def show_gallery(output_dir="/content/outputs"):
 # ----- сервер -----
 
 def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_LINES=50):
+    # Валидация параметров
     refresh_interval = validate_positive_int(refresh_interval, 5, "refresh_interval")
     LOG_LINES = validate_positive_int(LOG_LINES, 50, "LOG_LINES")
 
     with gr.Blocks() as demo:
+        # Logs tab
         with gr.Tab("Logs"):
             auto_update = gr.Checkbox(
                 label=f"Auto-refresh every {refresh_interval}s",
@@ -39,11 +41,34 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                 lines=LOG_LINES,
                 interactive=False
             )
-            refresh_btn.click(fn=lambda: show_logs(LOG_LINES), outputs=logs_box)
 
-            demo.load(fn=conditional_logs, inputs=auto_update, outputs=logs_box, every=refresh_interval)
+            # Ручное обновление
+            refresh_btn.click(
+                fn=lambda: "\n".join(get_last_logs(LOG_LINES)),
+                outputs=logs_box
+            )
 
+            # Автообновление — через вилку по версии gradio
+            if not is_gradio_v4_or_newer():
+                # Gradio < 4: поддержка every
+                demo.load(
+                    fn=lambda auto: "\n".join(get_last_logs(LOG_LINES)) if auto else "",
+                    inputs=auto_update,
+                    outputs=logs_box,
+                    every=refresh_interval
+                )
+            else:
+                # Gradio >= 4: через Timer
+                timer = gr.Timer(refresh_interval, repeat=True)
+                timer.tick(
+                    fn=lambda auto: "\n".join(get_last_logs(LOG_LINES)) if auto else "",
+                    inputs=auto_update,
+                    outputs=logs_box
+                )
+
+        # Gallery tab
         with gr.Tab("Gallery"):
-            gr.Gallery(show_gallery(output_dir), label="Generated Images").style(grid=[4], height="auto")
+            gr.Gallery(show_gallery(output_dir), label="Generated Images") \
+              .style(grid=[4], height="auto")
 
     return demo.launch(share=True, inline=False)

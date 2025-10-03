@@ -192,3 +192,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix:gradio server: SDXL Vintage Illustration FULL Pro Turbo Gallery notebook ([b794ab0](https://github.com/tekswirl25/sd-colab-gallery/commit/b794ab02285a443cb16961314a5cda4547ab1f3b))
 
+
+## v0.1.29 (2025-10-03)
+
+### 🛠 Fixed
+
+* fix:gradio server versionality ([5d90b8f](https://github.com/tekswirl25/sd-colab-gallery/commit/5d90b8f6c27cbf770a7f158a0ed177c93972c029))
+

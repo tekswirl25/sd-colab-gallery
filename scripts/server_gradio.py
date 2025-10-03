@@ -1,6 +1,7 @@
 import gradio as gr
 import os
 from scripts.logger import get_last_logs
+from scripts.utils_validators import validate_positive_int
 
 # ----- функции -----
 
@@ -22,21 +23,27 @@ def show_gallery(output_dir="/content/outputs"):
 
 # ----- сервер -----
 
-def start_gradio_server(output_dir="/content/outputs"):
+def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_LINES=50):
+    refresh_interval = validate_positive_int(refresh_interval, 5, "refresh_interval")
+    LOG_LINES = validate_positive_int(LOG_LINES, 50, "LOG_LINES")
+
     with gr.Blocks() as demo:
         with gr.Tab("Logs"):
-            auto_update = gr.Checkbox(label="Auto-refresh every 5s", value=False)
+            auto_update = gr.Checkbox(
+                label=f"Auto-refresh every {refresh_interval}s",
+                value=False
+            )
             refresh_btn = gr.Button("Refresh now")
-            logs_box = gr.Textbox(value=show_logs(), lines=20, interactive=False, label="Last 50 logs")
+            logs_box = gr.Textbox(
+                label=f"Last {LOG_LINES} logs",
+                lines=LOG_LINES,
+                interactive=False
+            )
+            refresh_btn.click(fn=lambda: show_logs(LOG_LINES), outputs=logs_box)
 
-            # Ручное обновление
-            refresh_btn.click(fn=show_logs, outputs=logs_box)
-
-            # Автообновление: каждые 5 секунд проверяем, включён ли чекбокс
-            logs_box.load(fn=conditional_logs, inputs=auto_update, outputs=logs_box, every=5)
+            demo.load(fn=conditional_logs, inputs=auto_update, outputs=logs_box, every=refresh_interval)
 
         with gr.Tab("Gallery"):
             gr.Gallery(show_gallery(output_dir), label="Generated Images").style(grid=[4], height="auto")
 
-    launch_obj = demo.launch(share=True, inline=False)
-    return launch_obj
+    return demo.launch(share=True, inline=False)

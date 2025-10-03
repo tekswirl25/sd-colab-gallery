@@ -213,3 +213,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix:gradio server versionality ([e72e06d](https://github.com/tekswirl25/sd-colab-gallery/commit/e72e06dbd8ebd258aec1bf7e692405706c56baa5))
 
+
+## v0.1.32 (2025-10-03)
+
+### 🛠 Fixed
+
+* fix:gradio server ([fcc031c](https://github.com/tekswirl25/sd-colab-gallery/commit/fcc031c0e72092ae3012f2e33963214e8850335d))
+

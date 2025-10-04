@@ -269,3 +269,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix:img2img and controlNet cells ([bbf1ad8](https://github.com/tekswirl25/sd-colab-gallery/commit/bbf1ad8700217447634c55ad14b0bf805a54402c))
 
+
+## v0.1.40 (2025-10-04)
+
+### 🛠 Fixed
+
+* fix:save_image_and_meta method ([52998af](https://github.com/tekswirl25/sd-colab-gallery/commit/52998af895762a7fd1a496f773ed17a95ec254f2))
+

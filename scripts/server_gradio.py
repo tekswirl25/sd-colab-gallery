@@ -68,19 +68,30 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                 )
 
         # ── Gallery tab ───────────────────────────────────────────────────────────
-        with gr.Tab("Gallery"):
-            gallery = gr.Gallery(
-                show_gallery(output_dir),
-                label="Generated Images",
-                columns=4,
-                height="auto"
-            )
-            with gr.Row():
-                download_btn = gr.Button("⬇️ Download all")
-                delete_btn = gr.Button("🗑️ Delete all")
+        # 🔹 Галереи по модулям
+        gallery_tabs = {
+            "Text2Img": f"{output_dir}/text2img",
+            "Img2Img": f"{output_dir}/img2img",
+            "ControlNet": f"{output_dir}/controlnet"
+        }
 
-            download_btn.click(fn=lambda: download_all(output_dir), outputs=None)
-            delete_btn.click(fn=lambda: delete_all(output_dir), outputs=None)
+        for name, path in gallery_tabs.items():
+            with gr.Tab(f"{name} Gallery"):
+                gallery = gr.Gallery(
+                    show_gallery(path),
+                    label=f"{name} Results",
+                    columns=4,
+                    height="auto"
+                )
+
+                with gr.Row():
+                    download_btn = gr.Button("⬇️ Download all")
+                    delete_btn   = gr.Button("🗑️ Delete all")
+
+                # Привязка кнопок (фиксируем path через аргумент)
+                download_btn.click(fn=lambda p=path: download_all(p), outputs=[])
+                delete_btn.click(fn=lambda p=path: delete_all(p), outputs=[])
+
 
 
     return demo.launch(share=True, inline=False)

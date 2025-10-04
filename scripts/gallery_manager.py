@@ -8,7 +8,9 @@ from scripts.logger import LOG_FILE
 
 
 
+
 def show_gallery(output_dir):
+    """Показывает все изображения в папке"""
     return sorted([
         os.path.join(output_dir, f)
         for f in os.listdir(output_dir)

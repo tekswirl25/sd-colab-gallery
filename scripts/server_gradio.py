@@ -1,7 +1,7 @@
 import gradio as gr
 import os
 from scripts.logger import get_last_logs
-from scripts.gallery_manager import show_gallery
+from scripts.gallery_manager import show_gallery,, delete_all, download_all
 from scripts.utils_validators import validate_positive_int
 from scripts.utils_version import is_gradio_v4_or_newer
 
@@ -69,7 +69,13 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
 
         # ── Gallery tab ───────────────────────────────────────────────────────────
         with gr.Tab("Gallery"):
-            gr.Gallery(show_gallery(output_dir), label="Generated Images") \
-              .style(grid=[4], height="auto")
+            gallery = gr.Gallery(show_gallery(output_dir), label="Generated Images").style(grid=[4], height="auto")
+            with gr.Row():
+                download_btn = gr.Button("⬇️ Download all")
+                delete_btn = gr.Button("🗑️ Delete all")
+
+            download_btn.click(fn=lambda: download_all(output_dir), outputs=None)
+            delete_btn.click(fn=lambda: delete_all(output_dir), outputs=None)
+
 
     return demo.launch(share=True, inline=False)

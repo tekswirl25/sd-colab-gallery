@@ -1,17 +1,40 @@
 # scripts/gallery_manager.py
 
-import os, time, json, shutil, threading
+import os, time, json, shutil, threading, zipfile
 import nest_asyncio
 from flask import Flask, send_file, redirect, url_for, render_template_string, abort
 from scripts.utils import list_images
 from scripts.logger import LOG_FILE
+
+
+
+def show_gallery(output_dir):
+    return sorted([
+        os.path.join(output_dir, f)
+        for f in os.listdir(output_dir)
+        if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+    ])
+
+def delete_all(output_dir):
+    for f in os.listdir(output_dir):
+        if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
+            os.remove(os.path.join(output_dir, f))
+    return "🗑️ All images deleted"
+
+def download_all(output_dir, zip_name="gallery.zip"):
+    zip_path = os.path.join(output_dir, zip_name)
+    with zipfile.ZipFile(zip_path, "w") as zipf:
+        for f in show_gallery(output_dir):
+            zipf.write(f, os.path.basename(f))
+    return zip_path
+
 
 def create_app(output_dir):
     """
     Flask-приложение для галереи и логов.
     """
     nest_asyncio.apply()
-    os.makedirs(output_dir, exist_ok=True) 
+    os.makedirs(output_dir, exist_ok=True)
     app = Flask(__name__, static_folder=output_dir, static_url_path='/outputs')
 
     # Полный HTML шаблон карточек (как был в ячейке сервера)
@@ -117,29 +140,29 @@ def create_app(output_dir):
         size_mb = round(total_bytes/1024/1024, 2)
         return render_template_string(INDEX_HTML, count=len(files), size_mb=size_mb, items=items)
 
-    @app.route('/download_all')
-    def download_all():
-        zip_path = os.path.join(app.static_folder, 'outputs_all.zip')
-        try:
-            if os.path.exists(zip_path):
-                os.remove(zip_path)
-        except Exception:
-            pass
-        # создаём архив рядом с файлами
-        shutil.make_archive(zip_path[:-4], 'zip', app.static_folder)
-        return send_file(zip_path, as_attachment=True)
+    # @app.route('/download_all')
+    # def download_all():
+    #     zip_path = os.path.join(app.static_folder, 'outputs_all.zip')
+    #     try:
+    #         if os.path.exists(zip_path):
+    #             os.remove(zip_path)
+    #     except Exception:
+    #         pass
+    #     # создаём архив рядом с файлами
+    #     shutil.make_archive(zip_path[:-4], 'zip', app.static_folder)
+    #     return send_file(zip_path, as_attachment=True)
 
-    @app.route('/delete_all')
-    def delete_all():
-        # удаляем только изображения и их JSON; zip тоже чистим
-        exts = ('.png', '.jpg', '.jpeg', '.webp', '.json', '.zip')
-        for f in os.listdir(app.static_folder):
-            if f.lower().endswith(exts):
-                try:
-                    os.remove(os.path.join(app.static_folder, f))
-                except Exception:
-                    pass
-        return redirect(url_for('index'))
+    # @app.route('/delete_all')
+    # def delete_all():
+    #     # удаляем только изображения и их JSON; zip тоже чистим
+    #     exts = ('.png', '.jpg', '.jpeg', '.webp', '.json', '.zip')
+    #     for f in os.listdir(app.static_folder):
+    #         if f.lower().endswith(exts):
+    #             try:
+    #                 os.remove(os.path.join(app.static_folder, f))
+    #             except Exception:
+    #                 pass
+    #     return redirect(url_for('index'))
 
     @app.route('/delete/<path:filename>')
     def delete_one(filename):

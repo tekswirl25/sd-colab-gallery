@@ -69,7 +69,12 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
 
         # ── Gallery tab ───────────────────────────────────────────────────────────
         with gr.Tab("Gallery"):
-            gallery = gr.Gallery(show_gallery(output_dir), label="Generated Images").style(grid=[4], height="auto")
+            gallery = gr.Gallery(
+                show_gallery(output_dir),
+                label="Generated Images",
+                columns=4,
+                height="auto"
+            )
             with gr.Row():
                 download_btn = gr.Button("⬇️ Download all")
                 delete_btn = gr.Button("🗑️ Delete all")

@@ -60,7 +60,7 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                 )
             else:
                 # Gradio >= 4: через Timer
-                timer = gr.Timer(refresh_interval, repeat=True)
+                timer = gr.Timer(refresh_interval)
                 timer.tick(
                     fn=lambda auto: conditional_logs(auto, LOG_LINES),
                     inputs=auto_update,

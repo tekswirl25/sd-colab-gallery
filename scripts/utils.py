@@ -11,66 +11,43 @@ def ts_now():
 
 def base_name(prefix): return f"{prefix}_{ts_now()}"
 
-# def save_image_and_meta(img: Image.Image, prefix: str, meta: dict, output_dir: str):
-#     try:
-#         os.makedirs(output_dir, exist_ok=True)  # ← добавить
-#         stem = base_name(prefix)
-#         img_path = os.path.join(output_dir, f"{stem}.png")
-#         meta_path = os.path.join(output_dir, f"{stem}.json")
-#         img.save(img_path)
-#         with open(meta_path, 'w') as f:
-#             json.dump(meta, f, ensure_ascii=False, indent=2)
-#         log_info(f"Saved image: {img_path}")
-#         return img_path, meta_path
-#     except Exception as e:
-#         log_error(f"Error saving image/meta: {e}")
-#         raise
-
-def save_image_and_meta(
-    im,
-    prefix,
-    meta,
-    output_dir="/content/outputs",
-    thumb_dir="/content/thumbnails",
-    thumb_size=(128, 128),
-    mode="text2img"
-):
+def save_image_and_meta(im, prefix, meta, output_dir, mode="text2img"):
     """
-    Сохраняет изображение, thumbnail и JSON с метаданными.
-    Картинки и JSON раскладываются по подпапкам:
-    - /outputs/<mode>/
-    - /thumbnails/<mode>/
+    Save image + metadata JSON + thumbnail.
+    Args:
+        im (PIL.Image): изображение
+        prefix (str): префикс имени файла (например text2img / img2img / controlnet)
+        meta (dict): словарь с метаданными
+        output_dir (str): корневой каталог (обычно CONFIG["OUTPUT_DIR"])
+        mode (str): подрежим ("text2img" / "img2img" / "controlnet")
+    Returns:
+        tuple: (image_path, meta_path)
     """
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    fname = f"{prefix}_{ts}.png"
 
-    # пути по модулю
-    out_path = os.path.join(output_dir, mode)
-    th_path = os.path.join(thumb_dir, mode)
+    # Основные папки
+    out_dir = Path(output_dir) / mode
+    thumb_dir = Path(output_dir) / "thumbnails" / mode
+    out_dir.mkdir(parents=True, exist_ok=True)
+    thumb_dir.mkdir(parents=True, exist_ok=True)
 
-    os.makedirs(out_path, exist_ok=True)
-    os.makedirs(th_path, exist_ok=True)
+    # Сохранение картинки
+    img_path = out_dir / fname
+    im.save(img_path, format="PNG")
 
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    base_name = f"{prefix}_{ts}"
+    # JSON
+    meta_path = out_dir / f"{fname}.json"
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=2, ensure_ascii=False)
 
-    img_path  = os.path.join(out_path, base_name + ".png")
-    meta_path = os.path.join(out_path, base_name + ".json")
-    thumb_path = os.path.join(th_path, base_name + "_thumb.jpg")
+    # Thumbnail
+    thumb_path = thumb_dir / fname.replace(".png", ".jpg")
+    thumb = im.copy()
+    thumb.thumbnail((128, 128))
+    thumb.convert("RGB").save(thumb_path, format="JPEG", quality=85)
 
-    # сохраняем оригинал
-    im.save(img_path)
-
-    # thumbnail
-    im_thumb = im.copy()
-    im_thumb.thumbnail(thumb_size)
-    im_thumb.save(thumb_path, "JPEG", quality=85)
-
-    # дописываем thumbnail в метаданные
-    meta["thumbnail"] = os.path.relpath(thumb_path, out_path)
-
-    with open(meta_path, "w") as f:
-        json.dump(meta, f, indent=2)
-
-    return img_path, meta_path
+    return str(img_path), str(meta_path)
 
 def free_memory():
     gc.collect()

@@ -262,3 +262,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix:gradio server gallery server_gradio.py added filter images by modules ([080f143](https://github.com/tekswirl25/sd-colab-gallery/commit/080f143812bc13d45cf9fa48117951a99eacd65a))
 
+
+## v0.1.39 (2025-10-04)
+
+### 🛠 Fixed
+
+* fix:img2img and controlNet cells ([bbf1ad8](https://github.com/tekswirl25/sd-colab-gallery/commit/bbf1ad8700217447634c55ad14b0bf805a54402c))
+

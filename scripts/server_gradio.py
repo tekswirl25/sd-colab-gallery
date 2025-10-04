@@ -1,7 +1,7 @@
 import gradio as gr
 import os
 from scripts.logger import get_last_logs
-from scripts.gallery_manager import show_gallery,, delete_all, download_all
+from scripts.gallery_manager import show_gallery, delete_all, download_all
 from scripts.utils_validators import validate_positive_int
 from scripts.utils_version import is_gradio_v4_or_newer
 

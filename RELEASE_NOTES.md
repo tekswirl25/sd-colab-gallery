@@ -295,3 +295,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: add missing build_style function to prompt_builder ([7735eae](https://github.com/tekswirl25/sd-colab-gallery/commit/7735eae0e6439ae4ff7ec23de45adb0e8090d11f))
 
+
+## v0.1.45 (2026-05-27)
+
+### 🛠 Fixed
+
+* fix: use AutoPipeline for txt2img/img2img, variant-aware ControlNet ([a2e495e](https://github.com/tekswirl25/sd-colab-gallery/commit/a2e495e739f656866a1ea18cfc395a6d434a8b8d))
+

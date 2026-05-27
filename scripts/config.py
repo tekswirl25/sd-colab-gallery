@@ -21,7 +21,7 @@ VARIANTS = {
             "controlnet_cfg": 6.5,
         }
     },
-    "TURBO": {
+    "SDXL_TURBO": {
         "imports": [
             "StableDiffusionXLPipeline",
             "StableDiffusionXLImg2ImgPipeline",
@@ -60,7 +60,7 @@ VARIANT_MODELS = {
         "controlnet":"diffusers/controlnet-canny-sdxl-1.0",
         "upscale":   "stabilityai/stable-diffusion-x4-upscaler",
     },
-    "TURBO": {
+    "SDXL_TURBO": {
         "txt2img":   "stabilityai/sdxl-turbo",
         "img2img":   "stabilityai/sdxl-turbo",
         # Для ControlNet под Turbo используем SDXL base как базовую модель пайплайна:

@@ -87,4 +87,9 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
 
 
 
-    return demo.launch(share=True, inline=False)
+    # allowed_paths нужен чтобы Gradio 6 мог отдавать файлы из output_dir и подпапок
+    subdirs = [output_dir] + [
+        os.path.join(output_dir, d)
+        for d in ("text2img", "img2img", "controlnet", "upscale")
+    ]
+    return demo.launch(share=True, inline=False, allowed_paths=subdirs)

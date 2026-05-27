@@ -288,3 +288,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: Tips cell type code → markdown ([84148df](https://github.com/tekswirl25/sd-colab-gallery/commit/84148dfa34d6dd406ce8d837e8bdef2ec49e2622))
 
+
+## v0.1.44 (2026-05-27)
+
+### 🛠 Fixed
+
+* fix: add missing build_style function to prompt_builder ([7735eae](https://github.com/tekswirl25/sd-colab-gallery/commit/7735eae0e6439ae4ff7ec23de45adb0e8090d11f))
+

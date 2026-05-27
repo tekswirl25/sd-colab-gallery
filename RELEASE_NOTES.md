@@ -309,3 +309,17 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: rename TURBO → SDXL_TURBO to match notebook dropdown ([e992d33](https://github.com/tekswirl25/sd-colab-gallery/commit/e992d3305f389ad02e3fd5da326dae6ee3ffb339))
 
+
+## v0.1.47 (2026-05-27)
+
+### 🛠 Fixed
+
+* fix: add allowed_paths to Gradio launch for gallery file serving ([508477b](https://github.com/tekswirl25/sd-colab-gallery/commit/508477b88464f2784030feff686da32c0b79b69e))
+
+
+## v0.1.48 (2026-05-27)
+
+### 🛠 Fixed
+
+* fix: add allowed_paths to Gradio launch for gallery file serving ([508477b](https://github.com/tekswirl25/sd-colab-gallery/commit/508477b88464f2784030feff686da32c0b79b69e))
+

@@ -1,12 +1,19 @@
 import torch
 from diffusers import (
-    StableDiffusionXLPipeline,
-    StableDiffusionXLImg2ImgPipeline,
+    AutoPipelineForText2Image,
+    AutoPipelineForImage2Image,
     StableDiffusionXLControlNetPipeline,
+    StableDiffusionControlNetPipeline,
     StableDiffusionUpscalePipeline,
     ControlNetModel,
 )
 from scripts.logger import log_info, log_error
+
+
+def _is_sdxl(model_id: str) -> bool:
+    """Определяет SDXL-модель по model_id."""
+    lower = model_id.lower()
+    return "xl" in lower or "turbo" in lower
 
 # === Глобальные кэши пайплайнов и их параметров ===
 _txt2img_pipe = None
@@ -68,9 +75,9 @@ def get_txt2img_pipe(model_id, device, dtype):
         or not _same(_txt2img_dev, device)
         or not _same(_txt2img_dtype, dtype)
     ):
-        log_info(f"Loading SDXL txt2img pipeline: id={model_id}, device={device}, dtype={dtype}")
+        log_info(f"Loading txt2img pipeline: id={model_id}, device={device}, dtype={dtype}")
         try:
-            pipe = StableDiffusionXLPipeline.from_pretrained(model_id, torch_dtype=dtype)
+            pipe = AutoPipelineForText2Image.from_pretrained(model_id, torch_dtype=dtype)
             _enable_xformers(pipe).to(device)
             _txt2img_pipe, _txt2img_id, _txt2img_dev, _txt2img_dtype = pipe, model_id, device, dtype
         except Exception as e:
@@ -87,9 +94,9 @@ def get_img2img_pipe(model_id, device, dtype):
         or not _same(_img2img_dev, device)
         or not _same(_img2img_dtype, dtype)
     ):
-        log_info(f"Loading SDXL img2img pipeline: id={model_id}, device={device}, dtype={dtype}")
+        log_info(f"Loading img2img pipeline: id={model_id}, device={device}, dtype={dtype}")
         try:
-            pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(model_id, torch_dtype=dtype)
+            pipe = AutoPipelineForImage2Image.from_pretrained(model_id, torch_dtype=dtype)
             _enable_xformers(pipe).to(device)
             _img2img_pipe, _img2img_id, _img2img_dev, _img2img_dtype = pipe, model_id, device, dtype
         except Exception as e:
@@ -107,11 +114,16 @@ def get_controlnet_pipe(model_id, controlnet_id, device, dtype):
         or not _same(_controlnet_dtype, dtype)
     ):
         log_info(
-            f"Loading SDXL ControlNet pipeline: base={model_id}, controlnet={controlnet_id}, device={device}, dtype={dtype}"
+            f"Loading ControlNet pipeline: base={model_id}, controlnet={controlnet_id}, device={device}, dtype={dtype}"
         )
         try:
             cn = ControlNetModel.from_pretrained(controlnet_id, torch_dtype=dtype)
-            pipe = StableDiffusionXLControlNetPipeline.from_pretrained(
+            PipelineClass = (
+                StableDiffusionXLControlNetPipeline
+                if _is_sdxl(model_id)
+                else StableDiffusionControlNetPipeline
+            )
+            pipe = PipelineClass.from_pretrained(
                 model_id, controlnet=cn, torch_dtype=dtype
             )
             _enable_xformers(pipe).to(device)

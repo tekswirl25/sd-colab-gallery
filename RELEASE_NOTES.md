@@ -335,3 +335,17 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: proper FileUpload widget with Browse + editable path + confirm ([163fc19](https://github.com/tekswirl25/sd-colab-gallery/commit/163fc1978824cc3ff6fe6ddee2330bd6231a508a))
 
+
+## v0.1.51 (2026-05-27)
+
+### 🛠 Fixed
+
+* fix: remove Timer (perf), fix gallery format for Gradio 6, manual refresh only ([a24a1b5](https://github.com/tekswirl25/sd-colab-gallery/commit/a24a1b5e8300835cb50d494f919fe2792ed8d84c))
+
+
+## v0.1.52 (2026-05-27)
+
+### 🛠 Fixed
+
+* fix: remove Timer (perf), fix gallery format for Gradio 6, manual refresh only ([a24a1b5](https://github.com/tekswirl25/sd-colab-gallery/commit/a24a1b5e8300835cb50d494f919fe2792ed8d84c))
+

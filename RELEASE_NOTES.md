@@ -302,3 +302,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: use AutoPipeline for txt2img/img2img, variant-aware ControlNet ([a2e495e](https://github.com/tekswirl25/sd-colab-gallery/commit/a2e495e739f656866a1ea18cfc395a6d434a8b8d))
 
+
+## v0.1.46 (2026-05-27)
+
+### 🛠 Fixed
+
+* fix: rename TURBO → SDXL_TURBO to match notebook dropdown ([e992d33](https://github.com/tekswirl25/sd-colab-gallery/commit/e992d3305f389ad02e3fd5da326dae6ee3ffb339))
+

@@ -276,3 +276,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix:save_image_and_meta method ([52998af](https://github.com/tekswirl25/sd-colab-gallery/commit/52998af895762a7fd1a496f773ed17a95ec254f2))
 
+
+## v0.1.42 (2026-05-27)
+
+* Update gallery scripts ([c29c4cb](https://github.com/tekswirl25/sd-colab-gallery/commit/c29c4cb63873521ef052fccc01277ac282c61b30))
+

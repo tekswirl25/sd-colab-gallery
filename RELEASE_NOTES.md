@@ -328,3 +328,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * Update gallery scripts ([f24a71e](https://github.com/tekswirl25/sd-colab-gallery/commit/f24a71ec259af8c511b8b2f269980e26f717d29d))
 
+
+## v0.1.50 (2026-05-27)
+
+### 🛠 Fixed
+
+* fix: proper FileUpload widget with Browse + editable path + confirm ([163fc19](https://github.com/tekswirl25/sd-colab-gallery/commit/163fc1978824cc3ff6fe6ddee2330bd6231a508a))
+

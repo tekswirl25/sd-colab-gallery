@@ -323,3 +323,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: add allowed_paths to Gradio launch for gallery file serving ([508477b](https://github.com/tekswirl25/sd-colab-gallery/commit/508477b88464f2784030feff686da32c0b79b69e))
 
+
+## v0.1.49 (2026-05-27)
+
+* Update gallery scripts ([f24a71e](https://github.com/tekswirl25/sd-colab-gallery/commit/f24a71ec259af8c511b8b2f269980e26f717d29d))
+

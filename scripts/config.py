@@ -69,8 +69,8 @@ VARIANT_MODELS = {
         "upscale":   "stabilityai/stable-diffusion-x4-upscaler",
     },
     "SD15": {
-        "txt2img":   "runwayml/stable-diffusion-v1-5",
-        "img2img":   "runwayml/stable-diffusion-v1-5",
+        "txt2img":   "stable-diffusion-v1-5/stable-diffusion-v1-5",
+        "img2img":   "stable-diffusion-v1-5/stable-diffusion-v1-5",
         "controlnet":"lllyasviel/sd-controlnet-canny",
         "upscale":   "stabilityai/stable-diffusion-x4-upscaler",
     },

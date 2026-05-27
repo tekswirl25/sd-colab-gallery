@@ -1,10 +1,13 @@
 # scripts/gallery_manager.py
 
 import os, time, json, shutil, threading, zipfile
-import nest_asyncio
-from flask import Flask, send_file, redirect, url_for, render_template_string, abort
 from scripts.utils import list_images
 from scripts.logger import LOG_FILE
+
+# Flask и nest_asyncio нужны только для Flask-галереи (start_gallery),
+# которая в ноутбуке не используется — Gradio-сервер достаточен.
+# Импорты намеренно отложены внутрь create_app(), чтобы не падать при
+# import gallery_manager в окружениях без Flask.
 
 
 
@@ -35,6 +38,8 @@ def create_app(output_dir):
     """
     Flask-приложение для галереи и логов.
     """
+    import nest_asyncio
+    from flask import Flask, send_file, redirect, url_for, render_template_string, abort
     nest_asyncio.apply()
     os.makedirs(output_dir, exist_ok=True)
     app = Flask(__name__, static_folder=output_dir, static_url_path='/outputs')

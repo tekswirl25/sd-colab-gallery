@@ -1,17 +1,17 @@
 import gradio as gr
 import os
+
 from scripts.logger import get_last_logs
 from scripts.gallery_manager import show_gallery, delete_all, download_all
 from scripts.utils_validators import validate_positive_int
-from scripts.utils_version import is_gradio_v4_or_newer
 
 # ----- функции -----
 
 
 
-def conditional_logs(auto: bool):
+def conditional_logs(auto: bool, log_lines: int = 50):
     """Если автообновление включено — вернуть новые логи, иначе None (чтобы не обновлять)."""
-    last = get_last_logs(50)
+    last = get_last_logs(log_lines)
     return "\n".join(last) if auto else None
 
 # def show_gallery(output_dir="/content/outputs"):
@@ -49,23 +49,13 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                 outputs=logs_box
             )
 
-            # Автообновление: вилка по версии Gradio (v3 vs v4+)
-            if not is_gradio_v4_or_newer():
-                # Gradio < 4: поддержка every=
-                demo.load(
-                    fn=lambda auto: conditional_logs(auto, LOG_LINES),
-                    inputs=auto_update,
-                    outputs=logs_box,
-                    every=refresh_interval
-                )
-            else:
-                # Gradio >= 4: через Timer
-                timer = gr.Timer(refresh_interval)
-                timer.tick(
-                    fn=lambda auto: conditional_logs(auto, LOG_LINES),
-                    inputs=auto_update,
-                    outputs=logs_box
-                )
+            # Автообновление через Timer (Gradio 4+)
+            timer = gr.Timer(refresh_interval)
+            timer.tick(
+                fn=lambda auto: conditional_logs(auto, LOG_LINES),
+                inputs=auto_update,
+                outputs=logs_box
+            )
 
         # ── Gallery tab ───────────────────────────────────────────────────────────
         # 🔹 Галереи по модулям
@@ -77,20 +67,23 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
 
         for name, path in gallery_tabs.items():
             with gr.Tab(f"{name} Gallery"):
+                os.makedirs(path, exist_ok=True)
                 gallery = gr.Gallery(
-                    show_gallery(path),
+                    value=show_gallery(path),
                     label=f"{name} Results",
                     columns=4,
                     height="auto"
                 )
+                refresh_gallery_btn = gr.Button("🔄 Refresh gallery")
 
                 with gr.Row():
                     download_btn = gr.Button("⬇️ Download all")
                     delete_btn   = gr.Button("🗑️ Delete all")
 
                 # Привязка кнопок (фиксируем path через аргумент)
+                refresh_gallery_btn.click(fn=lambda p=path: show_gallery(p), outputs=gallery)
                 download_btn.click(fn=lambda p=path: download_all(p), outputs=[])
-                delete_btn.click(fn=lambda p=path: delete_all(p), outputs=[])
+                delete_btn.click(fn=lambda p=path: (delete_all(p), show_gallery(p))[1], outputs=gallery)
 
 
 

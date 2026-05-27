@@ -91,10 +91,11 @@ def run_controlnet(user_prompt, style, tone, negative, src_path, CONFIG, DEFAULT
     final_prompt = build_prompt(user_prompt, style=style, tone=tone)
 
     variant = CONFIG["MODEL_VARIANT"]
-    model_id = VARIANT_MODELS[variant]["controlnet"]
+    controlnet_id = VARIANT_MODELS[variant]["controlnet"]
+    model_id = VARIANT_MODELS[variant].get("controlnet_model", VARIANT_MODELS[variant]["txt2img"])
 
     image = Image.open(src_path).convert("RGB")
-    pipe_cn = get_controlnet_pipe(model_id, CONFIG["DEVICE"], CONFIG["DTYPE"])
+    pipe_cn = get_controlnet_pipe(model_id, controlnet_id, CONFIG["DEVICE"], CONFIG["DTYPE"])
 
     generator = torch.manual_seed(seed)
     out = pipe_cn(

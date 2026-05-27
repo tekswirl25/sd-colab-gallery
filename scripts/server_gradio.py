@@ -44,7 +44,7 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                     label=f"{name} results",
                     columns=4,
                     height="auto",
-                    show_download_button=True,
+                    object_fit="cover",
                 )
                 with gr.Row():
                     refresh_btn = gr.Button("🔄 Refresh")

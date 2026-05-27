@@ -368,3 +368,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: remove Timer (perf), fix gallery format for Gradio 6, manual refresh only ([684ecd2](https://github.com/tekswirl25/sd-colab-gallery/commit/684ecd2ad878d061ef8df5d55ec1d619392007fc))
 
+
+## v0.1.56 (2026-05-27)
+
+* Update gallery scripts ([ff7daec](https://github.com/tekswirl25/sd-colab-gallery/commit/ff7daec277d98498c7d8199a337ef6c8ead24794))
+

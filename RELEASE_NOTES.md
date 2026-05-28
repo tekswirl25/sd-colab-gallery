@@ -506,3 +506,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: move controlnet model to device before from_pipe (cpu/cuda mismatch) ([07e3d2d](https://github.com/tekswirl25/sd-colab-gallery/commit/07e3d2d6efb2a9db07d7b3664f7b884bfe98bd8c))
 
+
+## v0.1.84 (2026-05-28)
+
+* Update gallery scripts ([05557ce](https://github.com/tekswirl25/sd-colab-gallery/commit/05557ce0029f6747972cc111cbf10e87e4924b2e))
+

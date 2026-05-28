@@ -421,3 +421,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: controlnet from_pipe reuse txt2img weights, prevent OOM ([e194f92](https://github.com/tekswirl25/sd-colab-gallery/commit/e194f929ddafed23924b81a25f4e04c5af0f68fb))
 
+
+## v0.1.71 (2026-05-28)
+
+### 🛠 Fixed
+
+* fix: controlnet from_pipe; gradio colab proxy instead of share link ([6577e35](https://github.com/tekswirl25/sd-colab-gallery/commit/6577e35da85d564e0727a45df3639088061b02c9))
+

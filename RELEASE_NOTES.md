@@ -473,3 +473,17 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: free memory before loading controlnet when base model differs (SDXL_TURBO) ([a4ee3cf](https://github.com/tekswirl25/sd-colab-gallery/commit/a4ee3cfa59444d48505c573050791b71d6ff4694))
 
+
+## v0.1.79 (2026-05-28)
+
+### 🛠 Fixed
+
+* fix: free memory on controlnet base mismatch; add test cell before controlnet ([f3c6faa](https://github.com/tekswirl25/sd-colab-gallery/commit/f3c6faa4c7bd11a2608168130b2e3f2f1856d2ba))
+
+
+## v0.1.80 (2026-05-28)
+
+### 🛠 Fixed
+
+* fix: free memory on controlnet base mismatch; add test cell before controlnet ([f3c6faa](https://github.com/tekswirl25/sd-colab-gallery/commit/f3c6faa4c7bd11a2608168130b2e3f2f1856d2ba))
+

@@ -77,8 +77,12 @@ def get_txt2img_pipe(model_id, device, dtype):
     ):
         log_info(f"Loading txt2img pipeline: id={model_id}, device={device}, dtype={dtype}")
         try:
-            pipe = AutoPipelineForText2Image.from_pretrained(model_id, torch_dtype=dtype)
-            _enable_xformers(pipe).to(device)
+            if _img2img_pipe is not None and _same(_img2img_id, model_id):
+                log_info("Reusing img2img weights for txt2img via from_pipe (no extra VRAM)")
+                pipe = AutoPipelineForText2Image.from_pipe(_img2img_pipe)
+            else:
+                pipe = AutoPipelineForText2Image.from_pretrained(model_id, torch_dtype=dtype)
+                _enable_xformers(pipe).to(device)
             _txt2img_pipe, _txt2img_id, _txt2img_dev, _txt2img_dtype = pipe, model_id, device, dtype
         except Exception as e:
             log_error(f"Failed to load txt2img pipeline: {e}")
@@ -96,8 +100,14 @@ def get_img2img_pipe(model_id, device, dtype):
     ):
         log_info(f"Loading img2img pipeline: id={model_id}, device={device}, dtype={dtype}")
         try:
-            pipe = AutoPipelineForImage2Image.from_pretrained(model_id, torch_dtype=dtype)
-            _enable_xformers(pipe).to(device)
+            # Если txt2img с той же моделью уже в GPU — переиспользуем веса (from_pipe)
+            # Это не копирует модель в память — UNet/VAE/энкодеры используются напрямую
+            if _txt2img_pipe is not None and _same(_txt2img_id, model_id):
+                log_info("Reusing txt2img weights for img2img via from_pipe (no extra VRAM)")
+                pipe = AutoPipelineForImage2Image.from_pipe(_txt2img_pipe)
+            else:
+                pipe = AutoPipelineForImage2Image.from_pretrained(model_id, torch_dtype=dtype)
+                _enable_xformers(pipe).to(device)
             _img2img_pipe, _img2img_id, _img2img_dev, _img2img_dtype = pipe, model_id, device, dtype
         except Exception as e:
             log_error(f"Failed to load img2img pipeline: {e}")

@@ -133,11 +133,17 @@ def get_controlnet_pipe(model_id, controlnet_id, device, dtype):
                 if _is_sdxl(model_id)
                 else StableDiffusionControlNetPipeline
             )
-            # Reuse txt2img weights if same model already loaded — no extra VRAM
+            # Reuse txt2img weights if same base model already loaded — no extra VRAM
             if _txt2img_pipe is not None and _same(_txt2img_id, model_id):
                 log_info("Reusing txt2img weights for controlnet via from_pipe (no extra VRAM)")
                 pipe = PipelineClass.from_pipe(_txt2img_pipe, controlnet=cn)
             else:
+                # Different base model (e.g. SDXL_TURBO txt2img vs SDXL base for ControlNet)
+                # Free all cached pipelines first to avoid OOM
+                log_info("Base model mismatch — freeing pipelines before loading ControlNet fresh")
+                from scripts.utils import free_memory
+                reset_pipes()
+                free_memory()
                 pipe = PipelineClass.from_pretrained(
                     model_id, controlnet=cn, torch_dtype=dtype
                 )

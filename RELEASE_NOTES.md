@@ -373,3 +373,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * Update gallery scripts ([ff7daec](https://github.com/tekswirl25/sd-colab-gallery/commit/ff7daec277d98498c7d8199a337ef6c8ead24794))
 
+
+## v0.1.57 (2026-05-27)
+
+### 🛠 Fixed
+
+* fix: don't reset src_path/control_path in Img2Img/ControlNet cells ([c105dd2](https://github.com/tekswirl25/sd-colab-gallery/commit/c105dd276f7ed55b725ea16ecdf99a0fdac2aa3e))
+

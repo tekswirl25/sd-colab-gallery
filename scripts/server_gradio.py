@@ -43,7 +43,8 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                     value=_gallery_value(path),
                     label=f"{name} results",
                     columns=4,
-                    height="auto",
+                    rows=3,
+                    height=480,
                     object_fit="cover",
                 )
                 with gr.Row():

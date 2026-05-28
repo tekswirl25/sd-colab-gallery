@@ -1,5 +1,6 @@
 import gradio as gr
 import os
+from PIL import Image as PILImage
 
 from scripts.logger import get_last_logs
 from scripts.gallery_manager import show_gallery, delete_all, download_all
@@ -7,8 +8,25 @@ from scripts.utils_validators import validate_positive_int
 
 
 def _gallery_value(path):
-    """Возвращает список (filepath, caption) для gr.Gallery в Gradio 6."""
-    return [(p, os.path.basename(p)) for p in show_gallery(path)]
+    """Загружает thumbnails как PIL-объекты — обходит файловый сервер Gradio 6."""
+    output_root = os.path.dirname(path)           # /content/outputs
+    mode = os.path.basename(path)                 # text2img / img2img / controlnet
+    thumb_dir = os.path.join(output_root, "thumbnails", mode)
+
+    # Если thumbnails ещё нет — показываем оригиналы (resize на лету)
+    source_dir = thumb_dir if os.path.exists(thumb_dir) else path
+    paths = show_gallery(source_dir)
+
+    result = []
+    for p in paths:
+        try:
+            img = PILImage.open(p).convert("RGB")
+            if source_dir == path:          # оригинал — уменьшаем
+                img.thumbnail((256, 256))
+            result.append((img, os.path.basename(p)))
+        except Exception:
+            pass
+    return result
 
 
 def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_LINES=50):
@@ -61,4 +79,11 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
         os.path.join(output_dir, d)
         for d in ("text2img", "img2img", "controlnet", "upscale")
     ]
-    return demo.launch(share=True, inline=False, allowed_paths=subdirs)
+    demo.launch(share=False, inline=False, server_port=7860,
+                quiet=True, allowed_paths=subdirs)
+    try:
+        from google.colab.output import eval_js
+        url = eval_js("google.colab.kernel.proxyPort(7860)")
+        print(f"✅ Gradio server: {url}")
+    except Exception:
+        print("✅ Gradio server running at http://localhost:7860")

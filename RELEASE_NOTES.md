@@ -492,3 +492,17 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * Update gallery scripts ([56faaa0](https://github.com/tekswirl25/sd-colab-gallery/commit/56faaa03322427f2928e8193fa2cf943686c1278))
 
+
+## v0.1.82 (2026-05-28)
+
+### 🛠 Fixed
+
+* fix: move controlnet model to device before from_pipe (cpu/cuda mismatch) ([07e3d2d](https://github.com/tekswirl25/sd-colab-gallery/commit/07e3d2d6efb2a9db07d7b3664f7b884bfe98bd8c))
+
+
+## v0.1.83 (2026-05-28)
+
+### 🛠 Fixed
+
+* fix: move controlnet model to device before from_pipe (cpu/cuda mismatch) ([07e3d2d](https://github.com/tekswirl25/sd-colab-gallery/commit/07e3d2d6efb2a9db07d7b3664f7b884bfe98bd8c))
+

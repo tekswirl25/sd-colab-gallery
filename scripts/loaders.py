@@ -127,7 +127,7 @@ def get_controlnet_pipe(model_id, controlnet_id, device, dtype):
             f"Loading ControlNet pipeline: base={model_id}, controlnet={controlnet_id}, device={device}, dtype={dtype}"
         )
         try:
-            cn = ControlNetModel.from_pretrained(controlnet_id, torch_dtype=dtype)
+            cn = ControlNetModel.from_pretrained(controlnet_id, torch_dtype=dtype).to(device)
             PipelineClass = (
                 StableDiffusionXLControlNetPipeline
                 if _is_sdxl(model_id)

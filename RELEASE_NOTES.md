@@ -447,3 +447,17 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * Update gallery scripts ([917ce73](https://github.com/tekswirl25/sd-colab-gallery/commit/917ce737c08b12a78c1f075533ae358e46b91706))
 
+
+## v0.1.75 (2026-05-28)
+
+### 🛠 Fixed
+
+* fix: remove broken guard in controlnet cell (syntax error) ([796015f](https://github.com/tekswirl25/sd-colab-gallery/commit/796015f66df7742163b279beefda8a228a1b1898))
+
+
+## v0.1.76 (2026-05-28)
+
+### 🛠 Fixed
+
+* fix: remove broken guard in controlnet cell (syntax error) ([796015f](https://github.com/tekswirl25/sd-colab-gallery/commit/796015f66df7742163b279beefda8a228a1b1898))
+

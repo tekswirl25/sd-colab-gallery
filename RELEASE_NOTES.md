@@ -414,3 +414,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * Update gallery scripts ([2ceb63f](https://github.com/tekswirl25/sd-colab-gallery/commit/2ceb63f6042d3b9530b3eaf68863154c78117e4c))
 
+
+## v0.1.70 (2026-05-28)
+
+### 🛠 Fixed
+
+* fix: controlnet from_pipe reuse txt2img weights, prevent OOM ([e194f92](https://github.com/tekswirl25/sd-colab-gallery/commit/e194f929ddafed23924b81a25f4e04c5af0f68fb))
+

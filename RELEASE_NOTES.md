@@ -442,3 +442,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: controlnet guard - require txt2img loaded first ([be1211c](https://github.com/tekswirl25/sd-colab-gallery/commit/be1211cd809235862f0185be01b846da71fa549a))
 
+
+## v0.1.74 (2026-05-28)
+
+* Update gallery scripts ([917ce73](https://github.com/tekswirl25/sd-colab-gallery/commit/917ce737c08b12a78c1f075533ae358e46b91706))
+

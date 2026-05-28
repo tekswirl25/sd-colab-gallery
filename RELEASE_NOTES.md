@@ -394,3 +394,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * fix: fixed gallery height+rows for proper thumbnail grid ([e34fadd](https://github.com/tekswirl25/sd-colab-gallery/commit/e34faddf23dade97ccf460d8148890f9da0801d3))
 
+
+## v0.1.60 (2026-05-28)
+
+* Update gallery scripts ([f517eee](https://github.com/tekswirl25/sd-colab-gallery/commit/f517eee91e685c8e88c4c6785202f15e710fc570))
+

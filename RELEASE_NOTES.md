@@ -466,3 +466,10 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * Update gallery scripts ([4420b51](https://github.com/tekswirl25/sd-colab-gallery/commit/4420b513c578750ccd2c192496c5487cccd8d9e1))
 
+
+## v0.1.78 (2026-05-28)
+
+### 🛠 Fixed
+
+* fix: free memory before loading controlnet when base model differs (SDXL_TURBO) ([a4ee3cf](https://github.com/tekswirl25/sd-colab-gallery/commit/a4ee3cfa59444d48505c573050791b71d6ff4694))
+

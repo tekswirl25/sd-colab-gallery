@@ -133,10 +133,15 @@ def get_controlnet_pipe(model_id, controlnet_id, device, dtype):
                 if _is_sdxl(model_id)
                 else StableDiffusionControlNetPipeline
             )
-            pipe = PipelineClass.from_pretrained(
-                model_id, controlnet=cn, torch_dtype=dtype
-            )
-            _enable_xformers(pipe).to(device)
+            # Reuse txt2img weights if same model already loaded — no extra VRAM
+            if _txt2img_pipe is not None and _same(_txt2img_id, model_id):
+                log_info("Reusing txt2img weights for controlnet via from_pipe (no extra VRAM)")
+                pipe = PipelineClass.from_pipe(_txt2img_pipe, controlnet=cn)
+            else:
+                pipe = PipelineClass.from_pretrained(
+                    model_id, controlnet=cn, torch_dtype=dtype
+                )
+                _enable_xformers(pipe).to(device)
             _controlnet_pipe, _controlnet_ids, _controlnet_dev, _controlnet_dtype = (
                 pipe,
                 (model_id, controlnet_id),

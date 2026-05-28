@@ -399,3 +399,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * Update gallery scripts ([f517eee](https://github.com/tekswirl25/sd-colab-gallery/commit/f517eee91e685c8e88c4c6785202f15e710fc570))
 
+
+## v0.1.63 (2026-05-28)
+
+* Update gallery scripts ([12ec5cc](https://github.com/tekswirl25/sd-colab-gallery/commit/12ec5ccc141522024e8b1d4f6ca477d51247b26f))
+

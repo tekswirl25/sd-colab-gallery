@@ -19,6 +19,8 @@ VARIANTS = {
             "img2img_cfg": 6.5,
             "controlnet_steps": 30,
             "controlnet_cfg": 6.5,
+            "inpaint_steps": 30,
+            "inpaint_cfg": 7.5,
         }
     },
     "SDXL_TURBO": {
@@ -35,6 +37,8 @@ VARIANTS = {
             "img2img_cfg": 1.5,
             "controlnet_steps": 8,
             "controlnet_cfg": 1.5,
+            "inpaint_steps": 8,
+            "inpaint_cfg": 1.5,
         }
     },
     "SD15": {
@@ -48,6 +52,8 @@ VARIANTS = {
             "img2img_cfg": 7.5,
             "controlnet_steps": 50,
             "controlnet_cfg": 7.5,
+            "inpaint_steps": 50,
+            "inpaint_cfg": 7.5,
         }
     }
 }
@@ -59,20 +65,25 @@ VARIANT_MODELS = {
         "img2img":   "stabilityai/stable-diffusion-xl-base-1.0",
         "controlnet":"diffusers/controlnet-canny-sdxl-1.0",
         "upscale":   "stabilityai/stable-diffusion-x4-upscaler",
+        # SDXL base supports inpainting natively via AutoPipelineForInpainting.from_pipe
+        "inpaint":   "stabilityai/stable-diffusion-xl-base-1.0",
     },
     "SDXL_TURBO": {
         "txt2img":   "stabilityai/sdxl-turbo",
         "img2img":   "stabilityai/sdxl-turbo",
-        # Для ControlNet под Turbo используем SDXL base как базовую модель пайплайна:
         "controlnet_model": "stabilityai/stable-diffusion-xl-base-1.0",
         "controlnet":       "diffusers/controlnet-canny-sdxl-1.0",
         "upscale":   "stabilityai/stable-diffusion-x4-upscaler",
+        # Inpainting uses SDXL base (turbo model doesn't support inpainting)
+        "inpaint":   "stabilityai/stable-diffusion-xl-base-1.0",
     },
     "SD15": {
         "txt2img":   "stable-diffusion-v1-5/stable-diffusion-v1-5",
         "img2img":   "stable-diffusion-v1-5/stable-diffusion-v1-5",
         "controlnet":"lllyasviel/sd-controlnet-canny",
         "upscale":   "stabilityai/stable-diffusion-x4-upscaler",
+        # Dedicated SD1.5 inpainting model (9-channel UNet, better mask handling)
+        "inpaint":   "runwayml/stable-diffusion-inpainting",
     },
     # общие дефолты для окружения:
     "device": "cuda",

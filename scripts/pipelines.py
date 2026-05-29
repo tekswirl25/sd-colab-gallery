@@ -6,6 +6,7 @@ from scripts.loaders import (
     get_img2img_pipe,
     get_controlnet_pipe,
     get_upscale_pipe,
+    get_inpaint_pipe,
 )
 from scripts.prompt_builder import build_prompt
 from scripts.utils import save_image_and_meta, ts_now
@@ -119,6 +120,59 @@ def run_controlnet(user_prompt, style, tone, negative, src_path, CONFIG, DEFAULT
     }
     p, _ = save_image_and_meta(im, prefix="controlnet", meta=meta, output_dir=CONFIG["OUTPUT_DIR"])
     log_info(f"ControlNet saved: {p}")
+    return p
+
+
+def run_inpaint(user_prompt, style, tone, negative, src_path, mask_path,
+                CONFIG, DEFAULTS, strength=0.99, seed=12345):
+    """
+    Inpainting: replace masked area with generated content.
+    mask_path: white = inpaint (replace), black = keep original.
+    strength: 0.0 = keep original, 1.0 = fully regenerate masked area.
+    """
+    from PIL import Image
+    final_prompt = build_prompt(user_prompt, style=style, tone=tone)
+
+    variant = CONFIG["MODEL_VARIANT"]
+    model_id = VARIANT_MODELS[variant]["inpaint"]
+
+    image = Image.open(src_path).convert("RGB")
+    mask  = Image.open(mask_path).convert("RGB")
+
+    # Resize mask to match image if needed
+    if mask.size != image.size:
+        mask = mask.resize(image.size, Image.LANCZOS)
+
+    pipe = get_inpaint_pipe(model_id, CONFIG["DEVICE"], CONFIG["DTYPE"])
+
+    generator = torch.manual_seed(seed)
+    out = pipe(
+        prompt=final_prompt,
+        negative_prompt=negative or None,
+        image=image,
+        mask_image=mask,
+        strength=strength,
+        num_inference_steps=DEFAULTS["inpaint_steps"],
+        guidance_scale=DEFAULTS["inpaint_cfg"],
+        generator=generator,
+    )
+
+    im = out.images[0]
+    meta = {
+        "mode": "inpaint",
+        "prompt": final_prompt,
+        "negative": negative,
+        "steps": DEFAULTS["inpaint_steps"],
+        "cfg_scale": DEFAULTS["inpaint_cfg"],
+        "strength": strength,
+        "seed": seed,
+        "source_path": src_path,
+        "mask_path": mask_path,
+        "timestamp": ts_now(),
+    }
+    p, _ = save_image_and_meta(im, prefix="inpaint", meta=meta,
+                               output_dir=CONFIG["OUTPUT_DIR"], mode="inpaint")
+    log_info(f"Inpaint saved: {p}")
     return p
 
 

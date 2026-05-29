@@ -2,6 +2,7 @@ import torch
 from diffusers import (
     AutoPipelineForText2Image,
     AutoPipelineForImage2Image,
+    AutoPipelineForInpainting,
     StableDiffusionXLControlNetPipeline,
     StableDiffusionControlNetPipeline,
     StableDiffusionUpscalePipeline,
@@ -36,6 +37,11 @@ _upscale_id = None
 _upscale_dev = None
 _upscale_dtype = None
 
+_inpaint_pipe = None
+_inpaint_id = None
+_inpaint_dev = None
+_inpaint_dtype = None
+
 
 # === Вспомогательные функции ===
 def _enable_xformers(pipe):
@@ -51,17 +57,17 @@ def _same(a, b):
 
 
 def reset_pipes():
-    """Сбросить все кэши пайплайнов (форсировать полную переинициализацию)."""
-    global _txt2img_pipe, _img2img_pipe, _controlnet_pipe, _upscale_pipe
-    global _txt2img_id, _img2img_id, _controlnet_ids, _upscale_id
-    global _txt2img_dev, _img2img_dev, _controlnet_dev, _upscale_dev
-    global _txt2img_dtype, _img2img_dtype, _controlnet_dtype, _upscale_dtype
+    """Reset all pipeline caches (force full re-initialization)."""
+    global _txt2img_pipe, _img2img_pipe, _controlnet_pipe, _upscale_pipe, _inpaint_pipe
+    global _txt2img_id, _img2img_id, _controlnet_ids, _upscale_id, _inpaint_id
+    global _txt2img_dev, _img2img_dev, _controlnet_dev, _upscale_dev, _inpaint_dev
+    global _txt2img_dtype, _img2img_dtype, _controlnet_dtype, _upscale_dtype, _inpaint_dtype
 
-    _txt2img_pipe = _img2img_pipe = _controlnet_pipe = _upscale_pipe = None
-    _txt2img_id = _img2img_id = _upscale_id = None
+    _txt2img_pipe = _img2img_pipe = _controlnet_pipe = _upscale_pipe = _inpaint_pipe = None
+    _txt2img_id = _img2img_id = _upscale_id = _inpaint_id = None
     _controlnet_ids = (None, None)
-    _txt2img_dev = _img2img_dev = _controlnet_dev = _upscale_dev = None
-    _txt2img_dtype = _img2img_dtype = _controlnet_dtype = _upscale_dtype = None
+    _txt2img_dev = _img2img_dev = _controlnet_dev = _upscale_dev = _inpaint_dev = None
+    _txt2img_dtype = _img2img_dtype = _controlnet_dtype = _upscale_dtype = _inpaint_dtype = None
 
     log_info("All pipelines have been reset")
 
@@ -158,6 +164,36 @@ def get_controlnet_pipe(model_id, controlnet_id, device, dtype):
             log_error(f"Failed to load controlnet pipeline: {e}")
             raise
     return _controlnet_pipe
+
+
+def get_inpaint_pipe(model_id, device, dtype):
+    global _inpaint_pipe, _inpaint_id, _inpaint_dev, _inpaint_dtype
+    if (
+        _inpaint_pipe is None
+        or not _same(_inpaint_id, model_id)
+        or not _same(_inpaint_dev, device)
+        or not _same(_inpaint_dtype, dtype)
+    ):
+        log_info(f"Loading inpaint pipeline: id={model_id}, device={device}, dtype={dtype}")
+        try:
+            # Reuse txt2img weights if same base model — no extra VRAM
+            if _txt2img_pipe is not None and _same(_txt2img_id, model_id):
+                log_info("Reusing txt2img weights for inpainting via from_pipe (no extra VRAM)")
+                pipe = AutoPipelineForInpainting.from_pipe(_txt2img_pipe)
+            else:
+                # Different base model (e.g. SD15 uses dedicated inpainting model)
+                # Free all cached pipelines first to avoid OOM
+                log_info("Loading inpaint pipeline fresh — freeing other pipelines first")
+                from scripts.utils import free_memory
+                reset_pipes()
+                free_memory()
+                pipe = AutoPipelineForInpainting.from_pretrained(model_id, torch_dtype=dtype)
+                _enable_xformers(pipe).to(device)
+            _inpaint_pipe, _inpaint_id, _inpaint_dev, _inpaint_dtype = pipe, model_id, device, dtype
+        except Exception as e:
+            log_error(f"Failed to load inpaint pipeline: {e}")
+            raise
+    return _inpaint_pipe
 
 
 def get_upscale_pipe(model_id, device, dtype):

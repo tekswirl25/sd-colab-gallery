@@ -19,7 +19,7 @@ Stable Diffusion на Google Colab для иллюстраций новостн�
   - `config.py` — конфиги вариантов модели (SDXL / SD15 / Turbo).
   - `utils.py` — сохранение, thumbnails, memory management.
 - `tests/` — тесты логики без GPU: `python -m unittest discover -s tests -t .`
-- `prompts/`, `thumbnails/` — рецепты и превью (не в git при большом объёме).
+- `prompts/` — проекты и стили (`PROJECT`, `STYLE` в ячейке «🎛 Проект и стиль»), см. `prompts/README.md`; `thumbnails/` — рецепты и превью (не в git при большом объёме).
 - `models/`, `outputs/` — локальные кэши, в git не идут.
 
 ---

@@ -19,6 +19,14 @@ class BuildPromptTest(unittest.TestCase):
     def test_plain_text_without_style(self):
         self.assertEqual(prompt_builder.build_prompt("a cat"), "a cat")
 
+    def test_extra_text_is_appended_after_style(self):
+        self.assertEqual(prompt_builder.build_prompt("a cat", style="illustration", extra="1940s"),
+                         "a cat, hand-drawn, ink outlines, watercolor shading, 1940s")
+
+    def test_extra_alone_and_empty_extra(self):
+        self.assertEqual(prompt_builder.build_prompt("a cat", extra="1940s"), "a cat, 1940s")
+        self.assertEqual(prompt_builder.build_prompt("a cat", extra=""), "a cat")
+
     def test_missing_style_is_ignored(self):
         self.assertEqual(prompt_builder.build_prompt("a cat", style="no-such-style"), "a cat")
 

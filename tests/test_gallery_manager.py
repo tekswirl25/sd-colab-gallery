@@ -29,5 +29,23 @@ class ShowGalleryTest(unittest.TestCase):
             self.assertEqual(gallery_manager.show_gallery(os.path.join(d, "nope")), [])
 
 
+class DeleteAllConfirmedTest(unittest.TestCase):
+    def make(self, d):
+        for name in ("a.png", "b.json"):
+            open(os.path.join(d, name), "w").close()
+
+    def test_not_confirmed_keeps_files(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.make(d)
+            self.assertFalse(gallery_manager.delete_all_confirmed(d, False))
+            self.assertEqual(sorted(os.listdir(d)), ["a.png", "b.json"])
+
+    def test_confirmed_deletes_files(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.make(d)
+            self.assertTrue(gallery_manager.delete_all_confirmed(d, True))
+            self.assertEqual(os.listdir(d), ["b.json"])  # удаляются только картинки
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -31,6 +31,13 @@ def delete_all(output_dir):
             os.remove(os.path.join(output_dir, f))
     return "🗑️ All images deleted"
 
+def delete_all_confirmed(output_dir, confirmed):
+    """Удаляет картинки только если пользователь подтвердил. Возвращает True, если удалено."""
+    if not confirmed:
+        return False
+    delete_all(output_dir)
+    return True
+
 def download_all(output_dir, zip_name="gallery.zip"):
     zip_path = os.path.join(output_dir, zip_name)
     with zipfile.ZipFile(zip_path, "w") as zipf:

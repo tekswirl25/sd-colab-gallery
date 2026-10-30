@@ -6,6 +6,7 @@
 import json
 import os
 import time
+import traceback
 from datetime import datetime
 
 from PIL import Image
@@ -32,6 +33,14 @@ def _default_reset_peak():
         pass
 
 
+def _short_traceback(text, max_lines):
+    """Заголовок и последние строки стека: по ним видно, где упало."""
+    lines = text.rstrip().splitlines()
+    if len(lines) > max_lines:
+        lines = [lines[0]] + lines[-(max_lines - 1):]
+    return "\n".join(lines)
+
+
 def _make_center_mask(path, size):
     """Чёрная маска с белым квадратом в центре (белое = заменить)."""
     mask = Image.new("L", (size, size), 0)
@@ -44,7 +53,7 @@ def _make_center_mask(path, size):
 def run_smoke(mode_ids, config, steps, size, report_dir, runner=None, get_mode=None,
               build_prompts=None, scene="a man reading a newspaper at a desk",
               clock=time.perf_counter, peak_vram_gb=_default_peak_vram_gb,
-              reset_peak=_default_reset_peak):
+              reset_peak=_default_reset_peak, tb_lines=25):
     """
     Прогоняет режимы по очереди. Сбой одного режима не останавливает остальные.
     Режимам, которым нужен исходник (controlnet, img2img, inpaint), даётся картинка
@@ -63,7 +72,7 @@ def run_smoke(mode_ids, config, steps, size, report_dir, runner=None, get_mode=N
 
     results, source = [], None
     for mid in mode_ids:
-        row = {"mode": mid, "ok": False, "seconds": None, "peak_vram_gb": None, "error": None, "output": None}
+        row = {"mode": mid, "ok": False, "seconds": None, "peak_vram_gb": None, "error": None, "traceback": None, "output": None}
         results.append(row)
         base = get_mode(mid)
         if base is None:
@@ -86,6 +95,7 @@ def run_smoke(mode_ids, config, steps, size, report_dir, runner=None, get_mode=N
             row["ok"] = True
         except Exception as e:  # отчёт важнее остановки
             row["error"] = f"{type(e).__name__}: {e}"
+            row["traceback"] = _short_traceback(traceback.format_exc(), tb_lines)
         row["seconds"] = round(clock() - t0, 2)
         row["peak_vram_gb"] = peak_vram_gb()
         if row["ok"] and source is None:
@@ -111,4 +121,6 @@ def format_report(report):
         extra = f"{r['seconds']} c, пик {r['peak_vram_gb']} ГБ" if r["seconds"] is not None else ""
         err = f"  {r['error']}" if r["error"] else ""
         lines.append(f"{status} {r['mode']:<18} {extra}{err}")
+        if r.get("traceback"):
+            lines.append(r["traceback"])
     return "\n".join(lines)

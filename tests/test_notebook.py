@@ -76,6 +76,16 @@ class SmokeNotebookTest(unittest.TestCase):
             for mod in re.findall(r"from scripts\.(\w+) import", src):
                 self.assertTrue((stubs.ROOT / "scripts" / f"{mod}.py").exists(), mod)
 
+    def test_title_and_first_cell_show_the_same_version_as_the_code(self):
+        from scripts import smoke_check
+        v = smoke_check.SMOKE_VERSION
+        first_md = "".join(self.nb["cells"][0]["source"])
+        self.assertEqual(self.nb["cells"][0]["cell_type"], "markdown")
+        self.assertIn(f"версия {v}", first_md.splitlines()[0])
+        first_code = next("".join(c["source"]) for c in self.nb["cells"] if c["cell_type"] == "code")
+        self.assertIn("SMOKE_VERSION", first_code)
+        self.assertIn("print(", first_code)
+
     def test_smoke_modes_exist_in_modes_file(self):
         src = "".join("".join(c["source"]) for c in self.nb["cells"] if c["cell_type"] == "code")
         default = re.search(r'MODES\s*=\s*"([^"]+)"', src).group(1).split(",")

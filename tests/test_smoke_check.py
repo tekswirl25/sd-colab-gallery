@@ -93,15 +93,31 @@ class SmokeCheckTest(unittest.TestCase):
         self.assertEqual(mask.convert("L").getpixel((256, 256)), 255)
         self.assertEqual(mask.convert("L").getpixel((2, 2)), 0)
 
-    def test_dependent_modes_are_skipped_when_source_missing(self):
+    def test_dependent_mode_run_alone_gets_a_synthetic_source(self):
+        # проверка одного inpaint (без режима, который даст картинку) не должна пропускаться
+        r = FakeRunner()
+        report = self.run_check(r, modes=("inpaint-anatomy",))
+        self.assertTrue(report["results"][0]["ok"])
+        kw = r.calls[0][1]
+        src = Image.open(kw["src_path"])
+        self.assertEqual(src.size, (512, 512))
+        self.assertEqual(Image.open(kw["mask_path"]).size, (512, 512))
+
+    def test_if_first_mode_fails_dependents_still_run_with_synthetic_source(self):
         r = FakeRunner(fail_on=["editorial-vo"])
         report = self.run_check(r)
         by = {x["mode"]: x for x in report["results"]}
         self.assertFalse(by["editorial-vo"]["ok"])
-        for m in ("stock-ref-comic", "inpaint-anatomy"):
-            self.assertFalse(by[m]["ok"])
-            self.assertIn("нет исходного", by[m]["error"])
-        self.assertEqual(len(r.calls), 1)
+        self.assertTrue(by["stock-ref-comic"]["ok"])
+        self.assertTrue(by["inpaint-anatomy"]["ok"])
+        self.assertEqual(len(r.calls), 3)
+
+    def test_given_source_path_is_used_instead_of_synthetic(self):
+        own = os.path.join(self.tmp.name, "mine.png")
+        Image.new("RGB", (300, 200), "red").save(own)
+        r = FakeRunner()
+        self.run_check(r, modes=("inpaint-anatomy",), source_path=own)
+        self.assertEqual(r.calls[0][1]["src_path"], own)
 
     def test_failure_keeps_traceback_with_frames(self):
         # по одной строке ошибки не найти место падения (IndexError: pop from empty list)
@@ -125,6 +141,18 @@ class SmokeCheckTest(unittest.TestCase):
             runner=lambda *a, **k: deep(60), get_mode=MODES.get, tb_lines=10)
         self.assertLessEqual(len(report["results"][0]["traceback"].splitlines()), 10)
         self.assertIn("RecursionMarker", report["results"][0]["traceback"])
+
+    def test_version_is_in_report_text_and_file_name(self):
+        report = self.run_check(FakeRunner())
+        v = smoke_check.SMOKE_VERSION
+        self.assertEqual(report["version"], v)
+        self.assertTrue(smoke_check.format_report(report).splitlines()[0].startswith(f"Версия проверки {v}"))
+        names = os.listdir(self.rep)
+        self.assertEqual(len(names), 1)
+        self.assertTrue(names[0].startswith(f"smoke_v{v}_"), names[0])
+
+    def test_version_format_is_date_and_time(self):
+        self.assertRegex(smoke_check.SMOKE_VERSION, r"^\d{14}$")
 
     def test_unknown_mode_is_reported_not_raised(self):
         report = self.run_check(FakeRunner(), modes=("nope",))

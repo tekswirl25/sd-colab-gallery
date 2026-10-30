@@ -61,29 +61,32 @@ VARIANTS = {
 # Добавить в scripts/config.py (после VARIANTS)
 VARIANT_MODELS = {
     "SDXL": {
-        "txt2img":   "stabilityai/stable-diffusion-xl-base-1.0",
-        "img2img":   "stabilityai/stable-diffusion-xl-base-1.0",
-        "controlnet":"diffusers/controlnet-canny-sdxl-1.0",
-        "upscale":   "stabilityai/stable-diffusion-x4-upscaler",
-        # SDXL base supports inpainting natively via AutoPipelineForInpainting.from_pipe
-        "inpaint":   "stabilityai/stable-diffusion-xl-base-1.0",
+        "txt2img":            "stabilityai/stable-diffusion-xl-base-1.0",
+        "img2img":            "stabilityai/stable-diffusion-xl-base-1.0",
+        "controlnet":         "diffusers/controlnet-canny-sdxl-1.0",
+        "controlnet_canny":   "diffusers/controlnet-canny-sdxl-1.0",
+        "controlnet_openpose":"thibaud/controlnet-openpose-sdxl-1.0",
+        "upscale":            "stabilityai/stable-diffusion-x4-upscaler",
+        "inpaint":            "stabilityai/stable-diffusion-xl-base-1.0",
     },
     "SDXL_TURBO": {
-        "txt2img":   "stabilityai/sdxl-turbo",
-        "img2img":   "stabilityai/sdxl-turbo",
-        "controlnet_model": "stabilityai/stable-diffusion-xl-base-1.0",
-        "controlnet":       "diffusers/controlnet-canny-sdxl-1.0",
-        "upscale":   "stabilityai/stable-diffusion-x4-upscaler",
-        # Inpainting uses SDXL base (turbo model doesn't support inpainting)
-        "inpaint":   "stabilityai/stable-diffusion-xl-base-1.0",
+        "txt2img":            "stabilityai/sdxl-turbo",
+        "img2img":            "stabilityai/sdxl-turbo",
+        "controlnet_model":   "stabilityai/stable-diffusion-xl-base-1.0",
+        "controlnet":         "diffusers/controlnet-canny-sdxl-1.0",
+        "controlnet_canny":   "diffusers/controlnet-canny-sdxl-1.0",
+        "controlnet_openpose":"thibaud/controlnet-openpose-sdxl-1.0",
+        "upscale":            "stabilityai/stable-diffusion-x4-upscaler",
+        "inpaint":            "stabilityai/stable-diffusion-xl-base-1.0",
     },
     "SD15": {
-        "txt2img":   "stable-diffusion-v1-5/stable-diffusion-v1-5",
-        "img2img":   "stable-diffusion-v1-5/stable-diffusion-v1-5",
-        "controlnet":"lllyasviel/sd-controlnet-canny",
-        "upscale":   "stabilityai/stable-diffusion-x4-upscaler",
-        # Dedicated SD1.5 inpainting model (9-channel UNet, better mask handling)
-        "inpaint":   "runwayml/stable-diffusion-inpainting",
+        "txt2img":            "stable-diffusion-v1-5/stable-diffusion-v1-5",
+        "img2img":            "stable-diffusion-v1-5/stable-diffusion-v1-5",
+        "controlnet":         "lllyasviel/sd-controlnet-canny",
+        "controlnet_canny":   "lllyasviel/sd-controlnet-canny",
+        "controlnet_openpose":"lllyasviel/control_v11p_sd15_openpose",
+        "upscale":            "stabilityai/stable-diffusion-x4-upscaler",
+        "inpaint":            "runwayml/stable-diffusion-inpainting",
     },
     # общие дефолты для окружения:
     "device": "cuda",

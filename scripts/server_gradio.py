@@ -52,6 +52,7 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
             "Text2Img":   f"{output_dir}/text2img",
             "Img2Img":    f"{output_dir}/img2img",
             "ControlNet": f"{output_dir}/controlnet",
+            "Inpaint":    f"{output_dir}/inpaint",
         }
 
         for name, path in gallery_tabs.items():
@@ -77,7 +78,7 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
 
     subdirs = [output_dir] + [
         os.path.join(output_dir, d)
-        for d in ("text2img", "img2img", "controlnet", "upscale")
+        for d in ("text2img", "img2img", "controlnet", "inpaint", "upscale")
     ]
     demo.launch(share=False, inline=False, server_port=7860,
                 quiet=True, allowed_paths=subdirs)

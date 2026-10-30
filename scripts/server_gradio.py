@@ -3,7 +3,7 @@ import os
 from PIL import Image as PILImage
 
 from scripts.logger import get_last_logs
-from scripts.gallery_manager import show_gallery, delete_all, download_all
+from scripts.gallery_manager import show_gallery, delete_all_confirmed, download_all
 from scripts.utils_validators import validate_positive_int
 
 
@@ -68,13 +68,15 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                 )
                 with gr.Row():
                     refresh_btn = gr.Button("🔄 Refresh")
+                    confirm_cb  = gr.Checkbox(label="Подтверждаю удаление всех картинок", value=False)
                     delete_btn  = gr.Button("🗑️ Delete all")
 
                 refresh_btn.click(fn=lambda p=path: _gallery_value(p), outputs=gallery)
                 delete_btn.click(
-                    fn=lambda p=path: (delete_all(p), _gallery_value(p))[1],
+                    fn=lambda ok, p=path: (delete_all_confirmed(p, ok), _gallery_value(p))[1],
+                    inputs=confirm_cb,
                     outputs=gallery
-                )
+                ).then(fn=lambda: False, outputs=confirm_cb)
 
     subdirs = [output_dir] + [
         os.path.join(output_dir, d)

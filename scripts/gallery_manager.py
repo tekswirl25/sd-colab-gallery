@@ -13,12 +13,17 @@ from scripts.logger import LOG_FILE
 
 
 def show_gallery(output_dir):
-    """Показывает все изображения в папке"""
-    return sorted([
-        os.path.join(output_dir, f)
-        for f in os.listdir(output_dir)
-        if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
-    ])
+    """Показывает все изображения в папке. Возвращает [] если папка не существует."""
+    if not os.path.exists(output_dir):
+        return []
+    try:
+        return sorted([
+            os.path.join(output_dir, f)
+            for f in os.listdir(output_dir)
+            if f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+        ])
+    except Exception:
+        return []
 
 def delete_all(output_dir):
     for f in os.listdir(output_dir):

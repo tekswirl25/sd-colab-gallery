@@ -1,0 +1,41 @@
+[
+  {
+    "name": "usa-safari-comics",
+    "label": "USA Safari — Comics",
+    "positive": "graphic novel illustration, comic book art style, detailed linework, realistic human proportions, cinematic lighting, volumetric shadows, warm rim light, dynamic composition, professional editorial illustration, muted saturated colors, high detail, sharp edges, no text, no letters, no watermark, (photorealistic:0.3)",
+    "positive_hands": "(detailed hands:1.2), (correct fingers:1.2), five fingers, anatomically correct hands",
+    "negative": "text, letters, watermark, signature, speech bubble, caption, anime, chibi, cartoon, flat colors, cel shading, distorted anatomy, extra limbs, bad proportions, blurry, low quality, low resolution, pixelated, realistic portrait photography, hyperrealistic, photorealistic face, celebrity likeness, recognizable person, specific politician, (deformed hands:1.4), (extra fingers:1.4), (missing fingers:1.4), (fused fingers:1.4), (too many fingers:1.4), (mutated hands:1.4), (deformed feet:1.3), (extra toes:1.3), (malformed limbs:1.3), (poorly drawn hands:1.4), (poorly drawn feet:1.3)",
+    "seed": -1,
+    "width": 1280,
+    "height": 720,
+    "steps": 30,
+    "cfg": 7.0,
+    "sampler": "DPM++ 2M Karras"
+  },
+  {
+    "name": "usa-safari-comics-vertical",
+    "label": "USA Safari — Comics (9:16 Shorts)",
+    "positive": "graphic novel illustration, comic book art style, detailed linework, realistic human proportions, cinematic lighting, volumetric shadows, warm rim light, dynamic composition, professional editorial illustration, muted saturated colors, high detail, sharp edges, no text, no letters, no watermark, (photorealistic:0.3)",
+    "positive_hands": "(detailed hands:1.2), (correct fingers:1.2), five fingers, anatomically correct hands",
+    "negative": "text, letters, watermark, signature, speech bubble, caption, anime, chibi, cartoon, flat colors, cel shading, distorted anatomy, extra limbs, bad proportions, blurry, low quality, low resolution, pixelated, realistic portrait photography, hyperrealistic, photorealistic face, celebrity likeness, recognizable person, specific politician, (deformed hands:1.4), (extra fingers:1.4), (missing fingers:1.4), (fused fingers:1.4), (too many fingers:1.4), (mutated hands:1.4), (deformed feet:1.3), (extra toes:1.3), (malformed limbs:1.3), (poorly drawn hands:1.4), (poorly drawn feet:1.3)",
+    "seed": -1,
+    "width": 720,
+    "height": 1280,
+    "steps": 30,
+    "cfg": 7.0,
+    "sampler": "DPM++ 2M Karras"
+  },
+  {
+    "name": "usa-safari-cartoon-bw",
+    "label": "USA Safari — Cartoon B&W",
+    "positive": "editorial cartoon, black and white illustration, pencil crosshatch shading, ink drawing, newspaper cartoon style, bold linework, high contrast, no halftones, satirical illustration, single scene, clear visual gag, professional editorial art",
+    "positive_hands": "",
+    "negative": "color, grayscale gradient, photorealistic, anime, chibi, text, letters, watermark, speech bubble, blurry, low quality, extra limbs, distorted anatomy, recognizable person, celebrity likeness",
+    "seed": -1,
+    "width": 1280,
+    "height": 720,
+    "steps": 30,
+    "cfg": 7.0,
+    "sampler": "DPM++ 2M Karras"
+  }
+]

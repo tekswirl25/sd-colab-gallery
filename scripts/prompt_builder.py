@@ -31,3 +31,34 @@ def build_prompt(text: str, style: str = None, tone: str = None) -> str:
     if suffix:
         parts.append(suffix)
     return ", ".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# USA Safari full presets
+# ---------------------------------------------------------------------------
+
+def get_full_style(name: str) -> dict | None:
+    """
+    Возвращает полный пресет стиля по имени из usa_safari_styles.json.
+
+    Поля пресета:
+      name, label, positive, positive_hands, negative,
+      seed, width, height, steps, cfg, sampler
+
+    Пример:
+        preset = get_full_style("usa-safari-comics")
+        # preset["positive"], preset["negative"], preset["seed"], ...
+
+    Возвращает None, если имя не найдено.
+    """
+    presets = _load("usa_safari_styles.json")
+    for p in presets:
+        if p.get("name") == name:
+            return p
+    return None
+
+
+def list_full_styles() -> list[str]:
+    """Список доступных имён пресетов USA Safari."""
+    presets = _load("usa_safari_styles.json")
+    return [p["name"] for p in presets]

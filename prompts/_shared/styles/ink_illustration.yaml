@@ -1,0 +1,9 @@
+label: Тушь, иллюстрация (общий)
+base_style: illustration
+color_tone: vintage
+negative: text, watermark, signature, blurry, low quality
+params:
+  steps: 30
+  cfg: 7.0
+  width: 1024
+  height: 1024

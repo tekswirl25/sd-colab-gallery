@@ -41,6 +41,21 @@ class NotebookTest(unittest.TestCase):
             if (ast.Load, "final_prompt") in names:
                 self.assertIn((ast.Store, "final_prompt"), names, f"cell {i} читает final_prompt, но не задаёт его")
 
+    def test_every_build_prompt_call_passes_style_extra(self):
+        # стиль проекта добавляет текст ко всем режимам, не только к Text2Img
+        for i, c in enumerate(self.nb["cells"]):
+            src = "".join(c["source"]) if c["cell_type"] == "code" else ""
+            for call in re.findall(r"build_prompt\((?:[^()]|\([^()]*\))*\)", src):
+                if "tone=color_tone" in call:
+                    self.assertIn("extra=style_extra", call, f"cell {i}")
+
+    def test_style_extra_defined_before_use_and_project_cell_present(self):
+        code = ["".join(c["source"]) for c in self.nb["cells"] if c["cell_type"] == "code"]
+        text = "\n".join(code)
+        first_def = re.search(r"^style_extra\s*=", text, re.M).start()
+        self.assertLess(first_def, text.index("extra=style_extra"))
+        self.assertIn("scripts.style_presets", text)
+
     def test_no_real_politicians_in_example_prompts(self):
         banned = ("trump", "biden", "putin", "obama", "harris")
         text = "\n".join("".join(c["source"]) for c in self.nb["cells"]).lower()

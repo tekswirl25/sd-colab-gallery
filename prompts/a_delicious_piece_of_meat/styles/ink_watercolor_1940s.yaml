@@ -1,0 +1,14 @@
+label: Тушь и акварель, 1940-е
+base_style: illustration
+color_tone: vintage
+positive: >-
+  precise realistic hand-drawn linework, detailed backgrounds, 1940s, faded sepia and ochre palette,
+  harsh southern sunlight, old paper texture, restrained, quiet, illustration for adults
+negative: >-
+  anime, chibi, cartoon exaggeration, photorealistic, 3d render, glossy,
+  modern clothing, text, watermark, signature, extra fingers, deformed hands
+params:
+  steps: 30
+  cfg: 6.5
+  width: 1024
+  height: 1024

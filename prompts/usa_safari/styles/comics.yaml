@@ -1,0 +1,15 @@
+label: USA Safari — Comics
+positive: graphic novel illustration, comic book art style, detailed linework, realistic human proportions,
+  cinematic lighting, volumetric shadows, warm rim light, dynamic composition, professional editorial
+  illustration, muted saturated colors, high detail, sharp edges, no text, no letters, no watermark, (photorealistic:0.3)
+negative: text, letters, watermark, signature, speech bubble, caption, anime, chibi, cartoon, flat colors,
+  cel shading, distorted anatomy, extra limbs, bad proportions, blurry, low quality, low resolution, pixelated,
+  realistic portrait photography, hyperrealistic, photorealistic face, celebrity likeness, recognizable
+  person, specific politician, (deformed hands:1.4), (extra fingers:1.4), (missing fingers:1.4), (fused
+  fingers:1.4), (too many fingers:1.4), (mutated hands:1.4), (deformed feet:1.3), (extra toes:1.3), (malformed
+  limbs:1.3), (poorly drawn hands:1.4), (poorly drawn feet:1.3)
+params:
+  steps: 30
+  cfg: 7.0
+  width: 1280
+  height: 720

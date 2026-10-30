@@ -11,6 +11,10 @@ from datetime import datetime
 
 from PIL import Image, ImageDraw
 
+# Версия проверки: дата и время (PST) последнего изменения проверки или её ноутбука.
+# Меняется при каждой правке: TZ=PST8PDT date +%Y%m%d%H%M%S. Название ноутбука должно её содержать (тест).
+SMOKE_VERSION = "20261030163753"
+
 _NEEDS_SOURCE = {"controlnet", "img2img", "inpaint"}
 
 
@@ -116,20 +120,21 @@ def run_smoke(mode_ids, config, steps, size, report_dir, runner=None, get_mode=N
             first_output = row["output"]
 
     report = {
+        "version": SMOKE_VERSION,
         "variant": config["MODEL_VARIANT"],
         "steps": steps,
         "size": size,
         "created": datetime.now().strftime("%Y%m%d%H%M%S"),
         "results": results,
     }
-    path = os.path.join(report_dir, f"smoke_{report['created']}.json")
+    path = os.path.join(report_dir, f"smoke_v{SMOKE_VERSION}_{report['created']}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     return report
 
 
 def format_report(report):
-    lines = [f"Проверка: {report['variant']}, {report['size']}px, {report['steps']} шагов"]
+    lines = [f"Версия проверки {report['version']}", f"Проверка: {report['variant']}, {report['size']}px, {report['steps']} шагов"]
     for r in report["results"]:
         status = "OK  " if r["ok"] else "FAIL"
         extra = f"{r['seconds']} c, пик {r['peak_vram_gb']} ГБ" if r["seconds"] is not None else ""

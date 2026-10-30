@@ -119,6 +119,41 @@ class SmokeCheckTest(unittest.TestCase):
         self.run_check(r, modes=("inpaint-anatomy",), source_path=own)
         self.assertEqual(r.calls[0][1]["src_path"], own)
 
+    def test_failure_keeps_traceback_with_frames(self):
+        # по одной строке ошибки не найти место падения (IndexError: pop from empty list)
+        report = self.run_check(FakeRunner(fail_on=["stock-ref-comic"]))
+        row = {x["mode"]: x for x in report["results"]}["stock-ref-comic"]
+        self.assertIn("Traceback", row["traceback"])
+        self.assertIn("RuntimeError: boom stock-ref-comic", row["traceback"])
+        self.assertIn("File ", row["traceback"])
+        ok_row = report["results"][0]
+        self.assertIsNone(ok_row["traceback"])
+
+    def test_report_text_shows_traceback_of_failed_modes_only(self):
+        report = self.run_check(FakeRunner(fail_on=["inpaint-anatomy"]))
+        text = smoke_check.format_report(report)
+        self.assertEqual(text.count("Traceback"), 1)
+        self.assertIn("boom inpaint-anatomy", text)
+
+    def test_long_traceback_is_cut_to_last_lines(self):
+        report = smoke_check.run_smoke(
+            mode_ids=("editorial-vo",), config=self.cfg, steps=8, size=512, report_dir=self.rep,
+            runner=lambda *a, **k: deep(60), get_mode=MODES.get, tb_lines=10)
+        self.assertLessEqual(len(report["results"][0]["traceback"].splitlines()), 10)
+        self.assertIn("RecursionMarker", report["results"][0]["traceback"])
+
+    def test_version_is_in_report_text_and_file_name(self):
+        report = self.run_check(FakeRunner())
+        v = smoke_check.SMOKE_VERSION
+        self.assertEqual(report["version"], v)
+        self.assertTrue(smoke_check.format_report(report).splitlines()[0].startswith(f"Версия проверки {v}"))
+        names = os.listdir(self.rep)
+        self.assertEqual(len(names), 1)
+        self.assertTrue(names[0].startswith(f"smoke_v{v}_"), names[0])
+
+    def test_version_format_is_date_and_time(self):
+        self.assertRegex(smoke_check.SMOKE_VERSION, r"^\d{14}$")
+
     def test_unknown_mode_is_reported_not_raised(self):
         report = self.run_check(FakeRunner(), modes=("nope",))
         self.assertFalse(report["results"][0]["ok"])

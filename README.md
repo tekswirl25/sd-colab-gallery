@@ -7,7 +7,7 @@ Stable Diffusion на Google Colab для иллюстраций новостн�
 
 ## Структура проекта
 
-- `colab/` — основной ноутбук (SD 1.5 / SDXL / SDXL Turbo).
+- `colab/` — основной ноутбук (SD 1.5 / SDXL / SDXL Turbo) и `GPU_smoke_check.ipynb` — короткая проверка режимов на GPU после обновления (отчёт на Drive).
 - `presets/` — JSON-конфиги стилей и режимов генерации.
   - `usa_safari_modes.json` — **7 рабочих режимов** (см. ниже).
   - `usa_safari_styles.json` — устаревший файл стилей (не использовать).

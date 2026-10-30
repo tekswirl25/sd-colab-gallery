@@ -26,6 +26,12 @@ class FakeRunner:
         return path
 
 
+def deep(n):
+    if n == 0:
+        raise RuntimeError("RecursionMarker")
+    return deep(n - 1)
+
+
 MODES = {
     "editorial-vo": {"id": "editorial-vo", "mode_type": "text2img", "positive": "p", "negative": "n",
                      "steps": 30, "width": 1280, "height": 720, "cfg": 7.0},
@@ -96,6 +102,29 @@ class SmokeCheckTest(unittest.TestCase):
             self.assertFalse(by[m]["ok"])
             self.assertIn("нет исходного", by[m]["error"])
         self.assertEqual(len(r.calls), 1)
+
+    def test_failure_keeps_traceback_with_frames(self):
+        # по одной строке ошибки не найти место падения (IndexError: pop from empty list)
+        report = self.run_check(FakeRunner(fail_on=["stock-ref-comic"]))
+        row = {x["mode"]: x for x in report["results"]}["stock-ref-comic"]
+        self.assertIn("Traceback", row["traceback"])
+        self.assertIn("RuntimeError: boom stock-ref-comic", row["traceback"])
+        self.assertIn("File ", row["traceback"])
+        ok_row = report["results"][0]
+        self.assertIsNone(ok_row["traceback"])
+
+    def test_report_text_shows_traceback_of_failed_modes_only(self):
+        report = self.run_check(FakeRunner(fail_on=["inpaint-anatomy"]))
+        text = smoke_check.format_report(report)
+        self.assertEqual(text.count("Traceback"), 1)
+        self.assertIn("boom inpaint-anatomy", text)
+
+    def test_long_traceback_is_cut_to_last_lines(self):
+        report = smoke_check.run_smoke(
+            mode_ids=("editorial-vo",), config=self.cfg, steps=8, size=512, report_dir=self.rep,
+            runner=lambda *a, **k: deep(60), get_mode=MODES.get, tb_lines=10)
+        self.assertLessEqual(len(report["results"][0]["traceback"].splitlines()), 10)
+        self.assertIn("RecursionMarker", report["results"][0]["traceback"])
 
     def test_unknown_mode_is_reported_not_raised(self):
         report = self.run_check(FakeRunner(), modes=("nope",))

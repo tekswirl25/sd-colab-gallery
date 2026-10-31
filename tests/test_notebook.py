@@ -86,6 +86,15 @@ class SmokeNotebookTest(unittest.TestCase):
         self.assertIn("SMOKE_VERSION", first_code)
         self.assertIn("print(", first_code)
 
+    def test_cache_check_cell_sits_between_drive_mount_and_the_run(self):
+        code = ["".join(c["source"]) for c in self.nb["cells"] if c["cell_type"] == "code"]
+        idx = {k: next(i for i, s in enumerate(code) if k in s)
+               for k in ("drive.mount", "hf_cache_check", "run_smoke(")}
+        self.assertLess(idx["drive.mount"], idx["hf_cache_check"])
+        self.assertLess(idx["hf_cache_check"], idx["run_smoke("])
+        cell = code[idx["hf_cache_check"]]
+        self.assertIn("DELETE_BROKEN = False", cell)  # по умолчанию ничего не удаляется
+
     def test_smoke_modes_exist_in_modes_file(self):
         src = "".join("".join(c["source"]) for c in self.nb["cells"] if c["cell_type"] == "code")
         default = re.search(r'MODES\s*=\s*"([^"]+)"', src).group(1).split(",")

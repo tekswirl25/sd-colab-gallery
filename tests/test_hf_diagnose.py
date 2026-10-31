@@ -96,6 +96,27 @@ class InspectLocalTest(unittest.TestCase):
         os.symlink(real, link)
         self.assertEqual(hf_diagnose.inspect_local_file(link)["size"], 3)
 
+    def test_symlink_replaced_by_text_file_is_detected(self):
+        # Google Drive не поддерживает символьные ссылки: кеш HF получает текстовый файл с путём
+        target = b"../../blobs/60/60dd6a051aea64d5bb1c3cfd426ad36dc953e48679c41de213a1eddd20ac8543"
+        info = hf_diagnose.inspect_local_file(self.path("ln.bin", target))
+        self.assertTrue(info["symlink_text"])
+        self.assertIn("символьн", hf_diagnose.verdict(info, remote_size=3_438_412_325))
+        self.assertNotIn("обрезан", hf_diagnose.verdict(info, remote_size=3_438_412_325))
+
+    def test_old_cache_layout_target_is_also_detected(self):
+        info = hf_diagnose.inspect_local_file(self.path("ln2.bin", b"../../blobs/abcdef0123456789abcdef0123456789abcdef01"))
+        self.assertTrue(info["symlink_text"])
+
+    def test_small_real_text_files_are_not_symlinks(self):
+        info = hf_diagnose.inspect_local_file(self.path("cfg.json", b'{"a": 1}'))
+        self.assertFalse(info["symlink_text"])
+
+    def test_truncated_real_file_is_still_truncated(self):
+        info = hf_diagnose.inspect_local_file(self.path("half.bin", b"\x80\x02" * 20))
+        self.assertFalse(info["symlink_text"])
+        self.assertIn("обрезан", hf_diagnose.verdict(info, remote_size=1000))
+
     def test_missing_file(self):
         self.assertEqual(hf_diagnose.inspect_local_file(os.path.join(self.d, "no"))["error"], "файла нет")
 

@@ -4,10 +4,26 @@
 # (размер, начало, zip ли это, сравнение с размером на Hugging Face).
 
 import os
+import re
 import zipfile
 
 _WEIGHT_EXT = {".safetensors": "safetensors", ".bin": "bin", ".ckpt": "ckpt", ".pt": "pt", ".pth": "pth"}
 _PICKLE = {"bin", "ckpt", "pt", "pth"}
+# Google Drive не поддерживает символьные ссылки: кеш Hugging Face получает вместо ссылки
+# маленький текстовый файл с путём вида ../../blobs/60/60dd...
+_LINK_TEXT = re.compile(rb"^(\.\./)+blobs/\S+$")
+_LINK_MAX_SIZE = 300
+
+
+def is_symlink_text(path):
+    """True, если обычный маленький файл содержит путь к blob (бывшая символьная ссылка)."""
+    try:
+        if os.path.islink(path) or os.path.getsize(path) > _LINK_MAX_SIZE:
+            return False
+        with open(path, "rb") as f:
+            return bool(_LINK_TEXT.match(f.read(_LINK_MAX_SIZE + 1).strip()))
+    except OSError:
+        return False
 
 
 def list_weight_files(repo, api):
@@ -48,6 +64,7 @@ def inspect_local_file(path):
         "head_hex": head[:16].hex(),
         "is_zip": zipfile.is_zipfile(path) if size else False,
         "lfs_pointer": head.startswith(b"version https://git-lfs"),
+        "symlink_text": is_symlink_text(path),
     }
 
 
@@ -57,6 +74,8 @@ def verdict(info, remote_size=None):
         return info["error"]
     if info["size"] == 0:
         return "файл пустой"
+    if info.get("symlink_text"):
+        return "это не файл, а текстовая замена символьной ссылки: Google Drive не поддерживает ссылки, кеш Hugging Face на Drive сломан"
     if info["lfs_pointer"]:
         return "это указатель git-lfs, а не веса (скачалось не до конца)"
     if remote_size and info["size"] < remote_size:

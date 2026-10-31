@@ -187,7 +187,12 @@ def get_inpaint_pipe(model_id, device, dtype):
                 from scripts.utils import free_memory
                 reset_pipes()
                 free_memory()
-                pipe = AutoPipelineForInpainting.from_pretrained(model_id, torch_dtype=dtype)
+                # Только safetensors (контракт: pickle .bin может выполнить код). У inpaint-репозитория
+                # есть только fp16 safetensors, поэтому при fp16 нужен variant="fp16".
+                kwargs = {"torch_dtype": dtype, "use_safetensors": True}
+                if dtype == torch.float16:
+                    kwargs["variant"] = "fp16"
+                pipe = AutoPipelineForInpainting.from_pretrained(model_id, **kwargs)
                 _enable_xformers(pipe).to(device)
             _inpaint_pipe, _inpaint_id, _inpaint_dev, _inpaint_dtype = pipe, model_id, device, dtype
         except Exception as e:

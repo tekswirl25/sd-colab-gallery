@@ -56,13 +56,22 @@ def remove_models(names, cache_dir):
     return removed
 
 
-def format_report(found, cache_dir, deleted):
+def format_report(found, cache_dir, deleted, max_paths=10):
     if not found["empty"] and not found["incomplete"]:
         return f"✅ В кеше {cache_dir} пустых и недокачанных файлов нет."
     models = affected_models(found, cache_dir)
     lines = [f"⚠️ В кеше {cache_dir}: пустых файлов {len(found['empty'])}, недокачанных {len(found['incomplete'])}."]
     lines += [f"   затронута модель: {m}" for m in models]
-    if deleted:
+    outside = [p for p in found["empty"] + found["incomplete"]
+               if not os.path.relpath(p, cache_dir).split(os.sep)[0].startswith(_MODEL_PREFIX)]
+    if outside:
+        lines.append(f"   вне папок моделей ({len(outside)}):")
+        lines += [f"      {os.path.relpath(p, cache_dir)}" for p in outside[:max_paths]]
+        if len(outside) > max_paths:
+            lines.append(f"      и ещё {len(outside) - max_paths}")
+    if not models:
+        lines.append("✅ Файлы моделей целы, модели не затронуты: это служебные файлы кеша, удалять нечего.")
+    elif deleted:
         lines.append("🗑️ Папки этих моделей удалены, при следующем запуске они скачаются заново.")
     else:
         lines.append("Чтобы скачать их заново, поставь DELETE_BROKEN = True и запусти ячейку ещё раз.")

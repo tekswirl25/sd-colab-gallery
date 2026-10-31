@@ -70,6 +70,33 @@ class ModelsTest(CacheCase):
                 hf_cache_check.remove_models([bad], self.c)
         self.assertTrue(os.path.exists(f"{self.c}/.locks"))
 
+    def test_report_lists_empty_files_outside_model_folders(self):
+        # пустые файлы вне models--* не затрагивают модели, но их должно быть видно
+        touch(f"{self.c}/xet/logs/a.log", b"")
+        touch(f"{self.c}/token", b"")
+        found = hf_cache_check.find_broken_files(self.c)
+        text = hf_cache_check.format_report(found, self.c, deleted=False)
+        self.assertIn("вне папок моделей", text)
+        self.assertIn("xet/logs/a.log", text)
+        self.assertIn("token", text)
+
+    def test_report_without_models_affected_says_models_are_ok(self):
+        import shutil
+        shutil.rmtree(f"{self.c}/models--org--bad")
+        touch(f"{self.c}/token", b"")
+        found = hf_cache_check.find_broken_files(self.c)
+        text = hf_cache_check.format_report(found, self.c, deleted=False)
+        self.assertIn("модели не затронуты", text)
+        self.assertNotIn("DELETE_BROKEN", text)
+
+    def test_long_lists_are_cut(self):
+        for i in range(30):
+            touch(f"{self.c}/xet/f{i}", b"")
+        found = hf_cache_check.find_broken_files(self.c)
+        text = hf_cache_check.format_report(found, self.c, deleted=False, max_paths=5)
+        self.assertIn("и ещё", text)
+        self.assertLess(text.count("xet/"), 8)
+
     def test_report_says_what_to_do(self):
         found = hf_cache_check.find_broken_files(self.c)
         text = hf_cache_check.format_report(found, self.c, deleted=False)

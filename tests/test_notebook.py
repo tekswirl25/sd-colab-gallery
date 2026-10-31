@@ -56,6 +56,26 @@ class NotebookTest(unittest.TestCase):
         self.assertLess(first_def, text.index("extra=style_extra"))
         self.assertIn("scripts.style_presets", text)
 
+    def test_config_init_checks_repo_before_importing_scripts(self):
+        # ячейка падала с «No module named 'scripts'», если Repo init не запускали или среда перезапустилась
+        cell = next("".join(c["source"]) for c in self.nb["cells"]
+                    if c["cell_type"] == "code" and "@title Config Init" in "".join(c["source"])[:40])
+        guard = cell.index("Repo init")
+        self.assertLess(guard, cell.index("from scripts"))
+        self.assertIn("sys.path", cell[:cell.index("from scripts")])
+        self.assertIn("RuntimeError", cell[:cell.index("from scripts")])
+
+    def test_title_shows_notebook_version_and_repo_init_prints_it(self):
+        from scripts import notebook_version
+        v = notebook_version.NOTEBOOK_VERSION
+        self.assertRegex(v, r"^\d{14}$")
+        self.assertEqual(self.nb["cells"][0]["cell_type"], "markdown")
+        self.assertIn(f"версия {v}", "".join(self.nb["cells"][0]["source"]).splitlines()[0])
+        repo_init = next("".join(c["source"]) for c in self.nb["cells"]
+                         if c["cell_type"] == "code" and "Repo init" in "".join(c["source"])[:40])
+        self.assertIn("NOTEBOOK_VERSION", repo_init)
+        self.assertIn("print(", repo_init)
+
     def test_no_real_politicians_in_example_prompts(self):
         banned = ("trump", "biden", "putin", "obama", "harris")
         text = "\n".join("".join(c["source"]) for c in self.nb["cells"]).lower()

@@ -3,17 +3,17 @@ from pathlib import Path
 
 PRESETS_DIR = Path("presets")
 
-def _load(file: str):
-    path = PRESETS_DIR / file
+def _load(file: str, presets_dir=None):
+    path = Path(presets_dir or PRESETS_DIR) / file
     if not path.exists():
         return []
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def build_style(style: str = None, tone: str = None, extra: str = "") -> str:
+def build_style(style: str = None, tone: str = None, extra: str = "", presets_dir=None) -> str:
     """Возвращает суффикс стиля+тона (+ extra, например добавка стиля проекта) без пользовательского текста."""
-    styles = {s["name"]: s["prompt"] for s in _load("styles.json")}
-    tones = {t["name"]: t["prompt"] for t in _load("color_tones.json")}
+    styles = {s["name"]: s["prompt"] for s in _load("styles.json", presets_dir)}
+    tones = {t["name"]: t["prompt"] for t in _load("color_tones.json", presets_dir)}
 
     parts = []
     if style and style in styles:

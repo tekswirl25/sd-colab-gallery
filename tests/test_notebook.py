@@ -41,52 +41,62 @@ class NotebookTest(unittest.TestCase):
             if (ast.Load, "final_prompt") in names:
                 self.assertIn((ast.Store, "final_prompt"), names, f"cell {i} читает final_prompt, но не задаёт его")
 
-    def test_every_build_prompt_call_passes_style_extra(self):
-        # стиль проекта добавляет текст ко всем режимам, не только к Text2Img
+    # ячейка: (часть заголовка, вызов, сколько строк кода допустимо)
+    THIN = (
+        ("📥 Репозиторий", "git clone", 9),
+        ("🚀 Старт", "setup_all", 12),
+        ("🎨 Стиль и проект", "apply_style", 10),
+        ("USA Safari — Генератор", "show_generator", 8),
+        ("USA Safari — Drive Reference Setup", "setup_drive_reference", 8),
+        ("🖼 Text2Img", "run_text2img", 9),
+        ("Upload image (Img2Img)", "show_upload", 8),
+        ("Img2Img — unified", "run_img2img", 9),
+        ("Upload image (ControlNet)", "show_upload", 8),
+        ("ControlNet — unified", "run_controlnet", 10),
+        ("Upload image (Inpainting)", "show_upload", 8),
+        ("Upload mask (Inpainting)", "show_upload", 8),
+        ("Inpainting — replace", "run_inpaint", 9),
+        ("Upscale x4", "run_upscale", 8),
+    )
+
+    def first_lines(self):
+        return ["".join(c["source"]).splitlines()[0] for c in self.nb["cells"] if c["cell_type"] == "code"]
+
+    def test_cells_are_fields_and_one_call_with_code_in_project_scripts(self):
+        # правило owner: в ноутбуке только поля и вызов, весь код в scripts/
+        for title, call, limit in self.THIN:
+            cell = next((("".join(c["source"])) for c in self.nb["cells"]
+                         if c["cell_type"] == "code" and title in "".join(c["source"]).splitlines()[0]), None)
+            self.assertIsNotNone(cell, f"нет ячейки {title}")
+            self.assertIn(call, cell, title)
+            code_lines = [l for l in cell.splitlines() if l.strip() and not l.strip().startswith("#")]
+            self.assertLessEqual(len(code_lines), limit, f"{title}: {len(code_lines)} строк кода, можно {limit}")
+
+    def test_no_code_cell_is_left_with_a_lot_of_code(self):
         for i, c in enumerate(self.nb["cells"]):
-            src = "".join(c["source"]) if c["cell_type"] == "code" else ""
-            for call in re.findall(r"build_prompt\((?:[^()]|\([^()]*\))*\)", src):
-                if "tone=color_tone" in call:
-                    self.assertIn("extra=style_extra", call, f"cell {i}")
+            if c["cell_type"] != "code":
+                continue
+            lines = [l for l in "".join(c["source"]).splitlines() if l.strip() and not l.strip().startswith("#")]
+            self.assertLessEqual(len(lines), 12, f"cell {i}: {len(lines)} строк кода")
 
-    def test_style_extra_defined_before_use_and_project_cell_present(self):
-        code = ["".join(c["source"]) for c in self.nb["cells"] if c["cell_type"] == "code"]
-        text = "\n".join(code)
-        first_def = re.search(r"^style_extra\s*=", text, re.M).start()
-        self.assertLess(first_def, text.index("extra=style_extra"))
-        self.assertIn("scripts.style_presets", text)
+    def test_start_cells_come_first_then_style_then_modes(self):
+        order = ("📥 Репозиторий", "🚀 Старт", "🎨 Стиль и проект", "Text2Img", "Img2Img — unified", "Upscale")
+        titles = self.first_lines()
+        pos = [next(i for i, t in enumerate(titles) if k in t) for k in order]
+        self.assertEqual(pos, sorted(pos))
 
-    def test_config_init_checks_repo_before_importing_scripts(self):
-        # ячейка падала с «No module named 'scripts'», если Repo init не запускали или среда перезапустилась
-        cell = next("".join(c["source"]) for c in self.nb["cells"]
-                    if c["cell_type"] == "code" and "@title Config Init" in "".join(c["source"])[:40])
-        guard = cell.index("Repo init")
-        self.assertLess(guard, cell.index("from scripts"))
-        self.assertIn("sys.path", cell[:cell.index("from scripts")])
-        self.assertIn("RuntimeError", cell[:cell.index("from scripts")])
+    def test_old_service_cells_are_gone_because_start_does_it_all(self):
+        text = "\n".join(self.first_lines())
+        for gone in ("Mount Google Drive", "Config Init", "Install dependencies", "Imports & utils", "Model loaders",
+                     "Style base"):
+            self.assertNotIn(gone, text, gone)
 
-    def test_title_shows_notebook_version_and_repo_init_prints_it(self):
+    def test_title_shows_notebook_version(self):
         from scripts import notebook_version
         v = notebook_version.NOTEBOOK_VERSION
         self.assertRegex(v, r"^\d{14}$")
         self.assertEqual(self.nb["cells"][0]["cell_type"], "markdown")
         self.assertIn(f"версия {v}", "".join(self.nb["cells"][0]["source"]).splitlines()[0])
-        repo_init = next("".join(c["source"]) for c in self.nb["cells"]
-                         if c["cell_type"] == "code" and "Repo init" in "".join(c["source"])[:40])
-        self.assertIn("NOTEBOOK_VERSION", repo_init)
-        self.assertIn("print(", repo_init)
-
-    def test_usa_safari_cells_are_thin_and_use_project_scripts(self):
-        # весь код в scripts/, в ячейках только вызов (owner: «все должно быть внутри проекта»)
-        for title, call in (("USA Safari — Генератор", "show_generator"),
-                            ("USA Safari — Drive Reference Setup", "setup_drive_reference"),
-                            ("🖼 Text2Img", "run_text2img")):
-            cell = next("".join(c["source"]) for c in self.nb["cells"]
-                        if c["cell_type"] == "code" and title in "".join(c["source"])[:80])
-            self.assertIn(call, cell)
-            self.assertIn("from scripts.", cell)
-            code_lines = [l for l in cell.splitlines() if l.strip() and not l.strip().startswith("#")]
-            self.assertLessEqual(len(code_lines), 8, f"{title}: ячейка не тонкая ({len(code_lines)} строк кода)")
 
     def test_no_real_politicians_in_example_prompts(self):
         banned = ("trump", "biden", "putin", "obama", "harris")

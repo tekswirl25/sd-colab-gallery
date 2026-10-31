@@ -156,6 +156,50 @@ class ResolveTest(TreeCase):
         self.assertIsNone(r["color_tone"])
 
 
+class ApplyStyleTest(TreeCase):
+    def apply(self, **kw):
+        cfg = {"OUTPUT_DIR": "/content/outputs"}
+        args = dict(project="film", style=None, character=None, save_to_drive=True, config=cfg,
+                    base_style="photoreal", color_tone="warm", negative="", root=self.root,
+                    presets_dir=self.presets)
+        args.update(kw)
+        return style_presets.apply_style(**args), cfg
+
+    def test_returns_values_the_notebook_needs(self):
+        r, _ = self.apply(character="dora", style="")
+        self.assertEqual((r["base_style"], r["color_tone"]), ("illustration", "vintage"))
+        self.assertEqual(r["negative"], "anime")
+        self.assertEqual(r["style_extra"], "thin girl, bob haircut, 1940s, sepia")
+        self.assertEqual(r["style_suffix"], "hand-drawn, ink, faded palette, thin girl, bob haircut, 1940s, sepia")
+        self.assertEqual(r["active_preset"]["width"], 1024)
+
+    def test_style_without_names_keeps_current_base_and_tone(self):
+        r, _ = self.apply(style="plain")
+        self.assertEqual((r["base_style"], r["color_tone"]), ("photoreal", "warm"))
+
+    def test_output_dir_switches_to_drive_folder_and_is_created(self):
+        with tempfile.TemporaryDirectory() as d:
+            write(f"{self.root}/film/project.yaml", {"name": "film", "default_style": "ink", "drive_output_dir": f"{d}/out"})
+            r, cfg = self.apply()
+            self.assertEqual(cfg["OUTPUT_DIR"], f"{d}/out")
+            self.assertTrue(os.path.isdir(f"{d}/out"))
+
+    def test_save_to_drive_off_keeps_output_dir(self):
+        r, cfg = self.apply(save_to_drive=False)
+        self.assertEqual(cfg["OUTPUT_DIR"], "/content/outputs")
+
+    def test_unknown_style_error_lists_available(self):
+        with self.assertRaisesRegex(ValueError, "ink, plain"):
+            self.apply(style="nope")
+
+    def test_without_project_only_base_style_and_tone_are_used(self):
+        r, cfg = self.apply(project="", negative="blurry", base_style="illustration", color_tone="vintage")
+        self.assertEqual((r["base_style"], r["color_tone"], r["negative"]), ("illustration", "vintage", "blurry"))
+        self.assertEqual((r["style_extra"], r["style_suffix"]), ("", "hand-drawn, ink, faded palette"))
+        self.assertIsNone(r["active_preset"])
+        self.assertEqual(cfg["OUTPUT_DIR"], "/content/outputs")
+
+
 class RepositoryTreeTest(unittest.TestCase):
     """Настоящее дерево prompts/ репозитория должно быть целым."""
 

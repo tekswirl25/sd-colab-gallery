@@ -79,7 +79,8 @@ class NotebookTest(unittest.TestCase):
     def test_usa_safari_cells_are_thin_and_use_project_scripts(self):
         # весь код в scripts/, в ячейках только вызов (owner: «все должно быть внутри проекта»)
         for title, call in (("USA Safari — Генератор", "show_generator"),
-                            ("USA Safari — Drive Reference Setup", "setup_drive_reference")):
+                            ("USA Safari — Drive Reference Setup", "setup_drive_reference"),
+                            ("🖼 Text2Img", "run_text2img")):
             cell = next("".join(c["source"]) for c in self.nb["cells"]
                         if c["cell_type"] == "code" and title in "".join(c["source"])[:80])
             self.assertIn(call, cell)

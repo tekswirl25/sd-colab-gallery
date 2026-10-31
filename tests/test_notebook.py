@@ -110,6 +110,18 @@ class SmokeNotebookTest(unittest.TestCase):
         self.assertTrue(set(default) <= ids)
 
 
+class HfCacheLocationTest(unittest.TestCase):
+    """Google Drive не поддерживает символьные ссылки, на которых держится кеш Hugging Face."""
+
+    def test_default_hf_cache_is_not_on_drive_in_any_notebook(self):
+        for nb_path in (NB, SMOKE_NB):
+            nb = json.load(open(nb_path, encoding="utf-8"))
+            text = "\n".join("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code")
+            m = re.search(r'^HF_CACHE_DIR\s*=\s*"([^"]+)"', text, re.M)
+            self.assertIsNotNone(m, nb_path.name)
+            self.assertFalse(m.group(1).startswith("/content/drive"), f"{nb_path.name}: {m.group(1)}")
+
+
 class ScriptsCompileTest(unittest.TestCase):
     def test_all_scripts_compile(self):
         for p in (stubs.ROOT / "scripts").glob("*.py"):

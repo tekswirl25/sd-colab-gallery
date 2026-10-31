@@ -50,7 +50,43 @@ class FindTest(CacheCase):
 
     def test_missing_cache_dir_gives_empty_result(self):
         found = hf_cache_check.find_broken_files(os.path.join(self.c, "nope"))
-        self.assertEqual(found, {"empty": [], "incomplete": []})
+        self.assertEqual(found, {"empty": [], "incomplete": [], "fake_links": []})
+
+
+class FakeLinksTest(CacheCase):
+    """Google Drive превращает символьные ссылки кеша в маленькие текстовые файлы с путём."""
+
+    def make_fake(self, model="models--org--drive"):
+        touch(f"{self.c}/{model}/snapshots/r1/unet/diffusion_pytorch_model.bin",
+              b"../../blobs/95/95cc7a2b204e0e9b30e728b8d5977d5c1128581d07674ceb461d891a57fdd14a")
+        return model
+
+    def test_fake_links_are_found_and_models_named(self):
+        model = self.make_fake()
+        found = hf_cache_check.find_broken_files(self.c)
+        self.assertEqual([os.path.basename(p) for p in found["fake_links"]], ["diffusion_pytorch_model.bin"])
+        self.assertIn(model, hf_cache_check.affected_models(found, self.c))
+
+    def test_real_symlinks_are_not_fake_links(self):
+        found = hf_cache_check.find_broken_files(self.c)
+        self.assertEqual(found["fake_links"], [])
+
+    def test_small_real_json_and_txt_are_not_fake_links(self):
+        touch(f"{self.c}/models--org--ok/snapshots/r1/model_index.json", b'{"_class_name": "X"}')
+        touch(f"{self.c}/models--org--ok/snapshots/r1/merges.txt", b"#version: 0.2\n")
+        self.assertEqual(hf_cache_check.find_broken_files(self.c)["fake_links"], [])
+
+    def test_report_explains_drive_and_symlinks(self):
+        self.make_fake()
+        found = hf_cache_check.find_broken_files(self.c)
+        text = hf_cache_check.format_report(found, self.c, deleted=False)
+        self.assertIn("символьн", text)
+        self.assertIn("models--org--drive", text)
+
+    def test_lock_files_are_ignored_everywhere(self):
+        touch(f"{self.c}/blobs/33/33578d.lock", b"")
+        found = hf_cache_check.find_broken_files(self.c)
+        self.assertFalse([p for p in found["empty"] if p.endswith(".lock")])
 
 
 class ModelsTest(CacheCase):
@@ -102,7 +138,7 @@ class ModelsTest(CacheCase):
         text = hf_cache_check.format_report(found, self.c, deleted=False)
         self.assertIn("models--org--bad", text)
         self.assertIn("DELETE_BROKEN", text)
-        ok = hf_cache_check.format_report({"empty": [], "incomplete": []}, self.c, deleted=False)
+        ok = hf_cache_check.format_report({"empty": [], "incomplete": [], "fake_links": []}, self.c, deleted=False)
         self.assertIn("пустых", ok)
 
 

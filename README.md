@@ -77,9 +77,6 @@ Stable Diffusion на Google Colab для иллюстраций новостн�
 
 ```
 MyDrive/
-├── hf_cache/                    ← кэш HuggingFace (монтируется при старте)
-│   └── models--...              ← веса скачиваются сюда автоматически
-│
 └── USA Safari Reference/        ← создаётся ячейкой Drive Reference Setup
     ├── characters/              ← thumbnails персонажей (512–768px JPEG)
     │   ├── official_canonical.jpg
@@ -98,7 +95,7 @@ MyDrive/
 - IP-Adapter веса (~1 GB, скачивается с HF автоматически при первом использовании)
 - Thumbnails персонажей для IP-Adapter
 
-Модели не скачиваются заново каждую сессию — Colab читает их с Drive напрямую.
+**Кеш HuggingFace на Drive не держим.** Он хранит файлы как символьные ссылки, а Google Drive их не поддерживает: вместо весов там оказываются текстовые файлы с путём, и модель потом не читается (`OSError: Unable to load weights…`). Поэтому кеш лежит на локальном диске Colab (`/content/hf_cache`), и модели скачиваются заново в каждом новом сеансе. Если на Drive остался старый `hf_cache`, его можно проверить и очистить ячейкой «🧹 Проверка кеша» в `GPU_smoke_check.ipynb`.
 
 ---
 

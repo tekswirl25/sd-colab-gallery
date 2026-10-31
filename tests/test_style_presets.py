@@ -28,8 +28,9 @@ class TreeCase(unittest.TestCase):
                   open(os.path.join(self.presets, "styles.json"), "w"))
         json.dump([{"name": "vintage", "prompt": "faded palette"}],
                   open(os.path.join(self.presets, "color_tones.json"), "w"))
+        self.drive_out = os.path.join(self.tmp.name, "drive", "film", "out")  # только во временной папке
         write(f"{self.root}/film/project.yaml",
-              {"name": "film", "default_style": "ink", "drive_output_dir": "/drive/film/out"})
+              {"name": "film", "default_style": "ink", "drive_output_dir": self.drive_out})
         write(f"{self.root}/film/styles/ink.yaml",
               {"label": "Ink", "base_style": "illustration", "color_tone": "vintage",
                "positive": "1940s, sepia", "negative": "anime",
@@ -122,7 +123,7 @@ class ComposeTest(TreeCase):
     def test_params_and_output_dir_come_from_style_and_project(self):
         r = self.compose()
         self.assertEqual(r["params"], {"steps": 30, "cfg": 6.5, "width": 1024, "height": 1024})
-        self.assertEqual(r["drive_output_dir"], "/drive/film/out")
+        self.assertEqual(r["drive_output_dir"], self.drive_out)
 
     def test_default_style_used_when_none_given(self):
         r = style_presets.compose("film", None, "x", root=self.root, presets_dir=self.presets)

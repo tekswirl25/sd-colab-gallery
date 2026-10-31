@@ -98,14 +98,20 @@ class SetupAllTest(unittest.TestCase):
     def setUp(self):
         self._cwd = os.getcwd()
         os.chdir(stubs.ROOT)  # presets/ читается по относительному пути, как в Colab после chdir в репозиторий
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cache = os.path.join(self.tmp.name, "hf_cache")  # настоящие /content недоступны без прав администратора
+        self._env = {k: os.environ.get(k) for k in ("HF_HOME", "HUGGINGFACE_HUB_CACHE")}
 
     def tearDown(self):
         os.chdir(self._cwd)
+        for k, v in self._env.items():
+            os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+        self.tmp.cleanup()
 
     def test_runs_steps_in_order_and_returns_notebook_variables(self):
         order = []
         res = notebook_setup.setup_all(
-            "/repo", "SD15", "GPU_OPTIMAL", "/out", "/content/drive", "/content/hf_cache",
+            "/repo", "SD15", "GPU_OPTIMAL", "/out", "/content/drive", self.cache,
             mount=lambda m: order.append("mount"),
             install=lambda mode: order.append("install"),
             init=lambda *a: order.append("init") or ({"OUTPUT_DIR": "/out"}, "V", {"d": 1}, True),
@@ -117,7 +123,7 @@ class SetupAllTest(unittest.TestCase):
 
     def test_returns_style_defaults_so_the_style_cell_is_really_optional(self):
         # режимы читают style_extra, negative и другие; без ячейки «Стиль и проект» они должны существовать
-        res = notebook_setup.setup_all("/repo", "SD15", "CPU", "/out", "/content/drive", "/content/hf_cache",
+        res = notebook_setup.setup_all("/repo", "SD15", "CPU", "/out", "/content/drive", self.cache,
                                        mount=lambda m: None, install=lambda m: None,
                                        init=lambda *a: ({"OUTPUT_DIR": "/out"}, 1, 2, 3), preload=lambda: {})
         for key in ("base_style", "color_tone", "negative", "style_extra", "style_suffix", "active_preset"):
@@ -133,7 +139,7 @@ class SetupAllTest(unittest.TestCase):
         from scripts import notebook_version
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            notebook_setup.setup_all("/repo", "SD15", "CPU", "/out", "/content/drive", "/content/hf_cache",
+            notebook_setup.setup_all("/repo", "SD15", "CPU", "/out", "/content/drive", self.cache,
                                      mount=lambda m: None, install=lambda m: None,
                                      init=lambda *a: ({"OUTPUT_DIR": "/out"}, 1, 2, 3), preload=lambda: {})
         self.assertIn(notebook_version.NOTEBOOK_VERSION, buf.getvalue())

@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 
 # Версия проверки: дата и время (PST) последнего изменения проверки или её ноутбука.
 # Меняется при каждой правке: TZ=PST8PDT date +%Y%m%d%H%M%S. Название ноутбука должно её содержать (тест).
-SMOKE_VERSION = "20261030170620"
+SMOKE_VERSION = "20261030173739"
 
 _NEEDS_SOURCE = {"controlnet", "img2img", "inpaint"}
 

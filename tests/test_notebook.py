@@ -95,6 +95,14 @@ class SmokeNotebookTest(unittest.TestCase):
         cell = code[idx["hf_cache_check"]]
         self.assertIn("DELETE_BROKEN = False", cell)  # по умолчанию ничего не удаляется
 
+    def test_diagnose_cell_follows_the_run_and_does_not_delete(self):
+        code = ["".join(c["source"]) for c in self.nb["cells"] if c["cell_type"] == "code"]
+        run = next(i for i, s in enumerate(code) if "run_smoke(" in s)
+        diag = next(i for i, s in enumerate(code) if "hf_diagnose" in s)
+        self.assertLess(run, diag)
+        self.assertNotIn("remove_models", code[diag])
+        self.assertNotIn("rmtree", code[diag])
+
     def test_smoke_modes_exist_in_modes_file(self):
         src = "".join("".join(c["source"]) for c in self.nb["cells"] if c["cell_type"] == "code")
         default = re.search(r'MODES\s*=\s*"([^"]+)"', src).group(1).split(",")

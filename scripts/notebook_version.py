@@ -4,4 +4,4 @@
 # TZ=PST8PDT date +%Y%m%d%H%M%S. Название ноутбука должно её содержать (тест).
 # У проверки на GPU своя версия: SMOKE_VERSION в scripts/smoke_check.py.
 
-NOTEBOOK_VERSION = "20261030212841"
+NOTEBOOK_VERSION = "20261030213942"

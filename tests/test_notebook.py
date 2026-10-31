@@ -142,6 +142,20 @@ class SmokeNotebookTest(unittest.TestCase):
         self.assertTrue(set(default) <= ids)
 
 
+class FormViewTest(unittest.TestCase):
+    """Код ячеек с #@title скрыт: видны только поля и кнопка запуска (cellView: form)."""
+
+    def test_every_titled_code_cell_is_in_form_view_in_both_notebooks(self):
+        for path in (NB, SMOKE_NB):
+            nb = json.load(open(path, encoding="utf-8"))
+            for i, c in enumerate(nb["cells"]):
+                if c["cell_type"] != "code":
+                    continue
+                first = "".join(c["source"]).lstrip().splitlines()[0]
+                if "@title" in first:
+                    self.assertEqual(c.get("metadata", {}).get("cellView"), "form", f"{path.name} cell {i}: {first}")
+
+
 class HfCacheLocationTest(unittest.TestCase):
     """Google Drive не поддерживает символьные ссылки, на которых держится кеш Hugging Face."""
 

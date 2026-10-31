@@ -145,3 +145,39 @@ def compose(project, style, scene, character=None, root="prompts", presets_dir="
         "params": r["params"],
         "drive_output_dir": r["drive_output_dir"],
     }
+
+
+def apply_style(project, style, character, save_to_drive, config, base_style, color_tone, negative="",
+                root="prompts", presets_dir="presets"):
+    """
+    Для ячейки «Проект и стиль»: выбирает стиль проекта и возвращает значения, которые остальные ячейки
+    читают как переменные ноутбука (base_style, color_tone, negative, style_extra, style_suffix, active_preset).
+    Если задано save_to_drive и у проекта есть drive_output_dir, папка создаётся и config["OUTPUT_DIR"] переключается.
+    Без проекта (пустое имя) работают только base_style, color_tone и negative из полей ноутбука.
+    """
+    from scripts.prompt_builder import build_style
+
+    if not project:
+        suffix = build_style(style=base_style, tone=color_tone, presets_dir=presets_dir)
+        print("✅ Проект не выбран: используются base_style и color_tone из полей ячейки")
+        return {"base_style": base_style, "color_tone": color_tone, "negative": negative, "style_extra": "",
+                "style_suffix": suffix, "active_preset": None}
+
+    print("Стили проекта:", ", ".join(list_styles(project, root)))
+    print("Персонажи:", ", ".join(list_characters(project, root)) or "нет")
+    r = resolve(project, style or None, character or None, root, presets_dir)
+    base_style = r["base_style"] or base_style
+    color_tone = r["color_tone"] or color_tone
+    if save_to_drive and r["drive_output_dir"]:
+        os.makedirs(r["drive_output_dir"], exist_ok=True)
+        config["OUTPUT_DIR"] = r["drive_output_dir"]
+    print(f"✅ Стиль: {r['style']} | вывод: {config['OUTPUT_DIR']}")
+    print("   Добавка:", r["extra"] or "нет")
+    return {
+        "base_style": base_style,
+        "color_tone": color_tone,
+        "negative": r["negative"],
+        "style_extra": r["extra"],
+        "style_suffix": build_style(style=base_style, tone=color_tone, extra=r["extra"], presets_dir=presets_dir),
+        "active_preset": r["params"],  # Text2Img берёт отсюда steps, cfg, width, height
+    }

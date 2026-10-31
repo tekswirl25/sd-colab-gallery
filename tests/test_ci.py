@@ -25,13 +25,15 @@ class WorkflowInstallsTestDependenciesTest(unittest.TestCase):
         for mod in self.imported_third_party():
             self.assertIn(THIRD_PARTY[mod], text, f"{mod}: нужен pip install {THIRD_PARTY[mod]} в tests.yml")
 
-    def test_notebook_install_cells_include_pyyaml(self):
+    def test_install_steps_include_pyyaml(self):
+        # основной ноутбук ставит зависимости через scripts/notebook_setup.py, проверка на GPU своей ячейкой
         import json
-        for name in ("SDXL_Vintage_Illustration_FULL_Pro_Turbo_Gallery.ipynb", "GPU_smoke_check.ipynb"):
-            nb = json.load(open(stubs.ROOT / "colab" / name, encoding="utf-8"))
-            installs = "\n".join("".join(c["source"]) for c in nb["cells"]
-                                 if c["cell_type"] == "code" and "pip install" in "".join(c["source"]))
-            self.assertIn("pyyaml", installs.lower(), name)
+        setup = (stubs.ROOT / "scripts" / "notebook_setup.py").read_text(encoding="utf-8")
+        self.assertIn("pyyaml", setup.lower())
+        nb = json.load(open(stubs.ROOT / "colab" / "GPU_smoke_check.ipynb", encoding="utf-8"))
+        installs = "\n".join("".join(c["source"]) for c in nb["cells"]
+                             if c["cell_type"] == "code" and "pip install" in "".join(c["source"]))
+        self.assertIn("pyyaml", installs.lower())
 
 
 if __name__ == "__main__":

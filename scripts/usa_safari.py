@@ -338,10 +338,9 @@ def _apply_ip_adapter(pipe, variant: str) -> bool:
 
 # ── Seeds log ─────────────────────────────────────────────────────────────────
 
-SEEDS_LOG = Path(os.environ.get(
-    "USA_SAFARI_SEEDS_LOG",
-    "/content/drive/MyDrive/USA Safari Reference/seeds/seeds_log.txt",
-))
+# Папка референсов на Drive: общий корень для seeds_log, референсов персонажей и ячейки Drive Reference Setup.
+REFERENCE_ROOT = Path(os.environ.get("USA_SAFARI_REFERENCE_ROOT", "/content/drive/MyDrive/USA Safari Reference"))
+SEEDS_LOG = Path(os.environ.get("USA_SAFARI_SEEDS_LOG", str(REFERENCE_ROOT / "seeds" / "seeds_log.txt")))
 
 def _log_seed(seed: int, mode_id: str, positive: str, img_path: str):
     """Дописывает запись в seeds_log.txt на Google Drive."""

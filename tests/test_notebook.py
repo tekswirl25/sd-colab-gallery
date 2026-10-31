@@ -76,6 +76,17 @@ class NotebookTest(unittest.TestCase):
         self.assertIn("NOTEBOOK_VERSION", repo_init)
         self.assertIn("print(", repo_init)
 
+    def test_usa_safari_cells_are_thin_and_use_project_scripts(self):
+        # весь код в scripts/, в ячейках только вызов (owner: «все должно быть внутри проекта»)
+        for title, call in (("USA Safari — Генератор", "show_generator"),
+                            ("USA Safari — Drive Reference Setup", "setup_drive_reference")):
+            cell = next("".join(c["source"]) for c in self.nb["cells"]
+                        if c["cell_type"] == "code" and title in "".join(c["source"])[:80])
+            self.assertIn(call, cell)
+            self.assertIn("from scripts.", cell)
+            code_lines = [l for l in cell.splitlines() if l.strip() and not l.strip().startswith("#")]
+            self.assertLessEqual(len(code_lines), 8, f"{title}: ячейка не тонкая ({len(code_lines)} строк кода)")
+
     def test_no_real_politicians_in_example_prompts(self):
         banned = ("trump", "biden", "putin", "obama", "harris")
         text = "\n".join("".join(c["source"]) for c in self.nb["cells"]).lower()

@@ -95,13 +95,6 @@ class ModesFileTest(UsaSafariTestBase):
         self.assertEqual(self.m.get_mode("editorial-vo")["mode_type"], "text2img")
         self.assertIsNone(self.m.get_mode("nope"))
 
-    def test_notebook_dropdown_ids_exist_in_modes(self):
-        nb = json.load(open(stubs.ROOT / "colab" / "SDXL_Vintage_Illustration_FULL_Pro_Turbo_Gallery.ipynb"))
-        src = next("".join(c["source"]) for c in nb["cells"] if "USA Safari — Генератор" in "".join(c["source"])[:80])
-        ids = {m["id"] for m in self.m.list_modes()}
-        for mid in ids:
-            self.assertIn(f'"{mid}"', src, mid)
-
 
 class BuildPromptsTest(UsaSafariTestBase):
     def test_without_character_has_no_anatomy(self):

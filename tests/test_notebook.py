@@ -43,19 +43,19 @@ class NotebookTest(unittest.TestCase):
 
     # ячейка: (часть заголовка, вызов, сколько строк кода допустимо)
     THIN = (
-        ("🚀 Старт", "setup_all", 12),
-        ("🎨 Стиль и проект", "apply_style", 10),
-        ("USA Safari — Генератор", "show_generator", 8),
-        ("USA Safari — Drive Reference Setup", "setup_drive_reference", 8),
-        ("🖼 Text2Img", "run_text2img", 9),
-        ("Upload image (Img2Img)", "show_upload", 8),
-        ("Img2Img — unified", "run_img2img", 9),
-        ("Upload image (ControlNet)", "show_upload", 8),
-        ("ControlNet — unified", "run_controlnet", 10),
-        ("Upload image (Inpainting)", "show_upload", 8),
-        ("Upload mask (Inpainting)", "show_upload", 8),
-        ("Inpainting — replace", "run_inpaint", 9),
-        ("Upscale x4", "run_upscale", 8),
+        ("🚀 Старт", "setup_all", 13),
+        ("🎨 Стиль и проект", "apply_style", 11),
+        ("USA Safari — Генератор", "show_generator", 9),
+        ("USA Safari — Drive Reference Setup", "setup_drive_reference", 9),
+        ("🖼 Text2Img", "run_text2img", 10),
+        ("Upload image (Img2Img)", "show_upload", 9),
+        ("Img2Img — unified", "run_img2img", 10),
+        ("Upload image (ControlNet)", "show_upload", 9),
+        ("ControlNet — unified", "run_controlnet", 11),
+        ("Upload image (Inpainting)", "show_upload", 9),
+        ("Upload mask (Inpainting)", "show_upload", 9),
+        ("Inpainting — replace", "run_inpaint", 10),
+        ("Upscale x4", "run_upscale", 9),
     )
 
     def first_lines(self):
@@ -76,7 +76,7 @@ class NotebookTest(unittest.TestCase):
             if c["cell_type"] != "code":
                 continue
             lines = [l for l in "".join(c["source"]).splitlines() if l.strip() and not l.strip().startswith("#")]
-            self.assertLessEqual(len(lines), 12, f"cell {i}: {len(lines)} строк кода")
+            self.assertLessEqual(len(lines), 14, f"cell {i}: {len(lines)} строк кода")
 
     def test_start_cells_come_first_then_style_then_modes(self):
         order = ("🚀 Старт", "🎨 Стиль и проект", "Text2Img", "Img2Img — unified", "Upscale")
@@ -93,6 +93,31 @@ class NotebookTest(unittest.TestCase):
         self.assertLess(start.index("sys.path"), start.index("from scripts"))
         self.assertNotIn("📥", "\n".join(self.first_lines()))
         self.assertNotIn("📥", "".join(self.nb["cells"][0]["source"]) + "".join(self.nb["cells"][1]["source"]))
+
+    def start_cell(self):
+        return next("".join(c["source"]) for c in self.nb["cells"]
+                    if c["cell_type"] == "code" and "🚀 Старт" in "".join(c["source"]).splitlines()[0])
+
+    def test_start_repo_name_is_a_form_field_with_the_default_repo(self):
+        # репозиторий берётся по умолчанию из поля формы, а не зашит в код
+        start = self.start_cell()
+        line = next(l for l in start.splitlines() if l.strip().startswith("REPO_NAME"))
+        self.assertIn('"sd-colab-gallery"', line)
+        self.assertIn("#@param", line)
+        self.assertIn("{REPO_NAME}", start)
+
+    def test_every_other_cell_says_what_to_run_when_start_was_skipped(self):
+        # без «Старта» ячейки падали непонятным «No module named scripts» / NameError
+        for i, c in enumerate(self.nb["cells"]):
+            if c["cell_type"] != "code" or c is self.nb["cells"][0]:
+                continue
+            text = "".join(c["source"])
+            if "🚀 Старт" in text.splitlines()[0]:
+                continue
+            self.assertIn('assert "CONFIG" in globals()', text, f"cell {i}: {text.splitlines()[0]}")
+            self.assertIn("🚀 Старт", text.split("assert", 1)[1].splitlines()[0])
+            code_before = [l for l in text.split("assert", 1)[0].splitlines() if l.strip() and not l.strip().startswith("#")]
+            self.assertEqual(code_before, [], f"cell {i}: до проверки есть код")
 
     def test_old_service_cells_are_gone_because_start_does_it_all(self):
         text = "\n".join(self.first_lines())

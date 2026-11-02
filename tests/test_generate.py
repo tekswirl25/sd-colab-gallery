@@ -111,10 +111,6 @@ class Text2ImgTest(unittest.TestCase):
         self.assertEqual([os.path.basename(p) for p in paths], ["text2img_1.png", "text2img_2.png"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 # ───────────────────────── Img2Img, ControlNet, Inpaint, Upscale ─────────────────────────
 class ModesBase(unittest.TestCase):
     DEFAULTS = {"img2img_steps": 25, "img2img_cfg": 7.0, "controlnet_steps": 20, "controlnet_cfg": 6.0,
@@ -293,3 +289,53 @@ class UpscaleTest(ModesBase):
     def test_empty_path_is_an_error(self):
         with self.assertRaisesRegex(ValueError, "in_path"):
             self.run_it(in_path="")
+
+
+# ───────────────────────── Показ результата под ячейкой ─────────────────────────
+class ShowResultTest(ModesBase):
+    """Готовый кадр показывается сразу под ячейкой: без поиска файлов и ссылок."""
+
+    def setUp(self):
+        super().setUp()
+        self.shown = []
+
+    def show(self, image, caption=""):
+        self.shown.append((image.size, caption))
+
+    def test_text2img_shows_every_image(self):
+        generate.run_text2img(config=self.config, defaults={"txt2img_steps": 1, "txt2img_cfg": 1, "img_size": (16, 16)},
+                              user_prompt="a", seed=5, n=2, get_pipe=self.get_pipe, save=self.save, show=self.show)
+        self.assertEqual(len(self.shown), 2)
+        self.assertIn("seed 5", self.shown[0][1])
+        self.assertIn("seed 6", self.shown[1][1])
+
+    def test_img2img_controlnet_inpaint_upscale_show_the_result(self):
+        common = dict(config=self.config, get_pipe=self.get_pipe, save=self.save, show=self.show)
+        generate.run_img2img(defaults=self.DEFAULTS, user_prompt="a", seed=1, strength=0.5, base_style=None,
+                             color_tone=None, style_extra="", negative="", src_path=self.src, **common)
+        generate.run_controlnet(defaults=self.DEFAULTS, user_prompt="a", seed=1, low_thr=1, high_thr=2,
+                                base_style=None, color_tone=None, style_extra="", negative="",
+                                control_path=self.src, canny=lambda im, low, high: Image.new("L", im.size), **common)
+        generate.run_inpaint(defaults=self.DEFAULTS, user_prompt="a", seed=1, strength=0.9, base_style=None,
+                             color_tone=None, style_extra="", negative="", src_path=self.src, mask_path=self.mask,
+                             **common)
+        generate.run_upscale(in_path=self.src, seed=1, prompt="", **common)
+        self.assertEqual(len(self.shown), 4)
+
+    def test_showing_does_not_break_generation_outside_a_notebook(self):
+        # без IPython (как в этих тестах и в обычном python) показ молча пропускается
+        paths = generate.run_upscale(config=self.config, in_path=self.src, seed=1, get_pipe=self.get_pipe,
+                                     save=self.save)
+        self.assertTrue(paths.endswith("upscale.png"))
+
+    def test_a_failing_display_does_not_lose_the_saved_result(self):
+        def bad(image, caption=""):
+            raise RuntimeError("display broke")
+        path = generate.run_upscale(config=self.config, in_path=self.src, seed=1, get_pipe=self.get_pipe,
+                                    save=self.save, show=bad)
+        self.assertTrue(path.endswith("upscale.png"))
+        self.assertEqual(len(self.saved), 1)
+
+
+if __name__ == "__main__":
+    unittest.main()

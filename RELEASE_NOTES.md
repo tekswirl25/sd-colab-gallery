@@ -576,3 +576,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * Merge pull request #12 from tekswirl25/claude/tender-bell-56kpng ([bedd5c6](https://github.com/tekswirl25/sd-colab-gallery/commit/bedd5c682db16a6345b336aa689a0c6900dda9a4))
 
+
+## v0.1.100 (2026-11-02)
+
+* Merge pull request #13 from tekswirl25/claude/tender-bell-56kpng ([7885cf8](https://github.com/tekswirl25/sd-colab-gallery/commit/7885cf8d6b8ff4796eb5075490982ec2f44bb9fc))
+

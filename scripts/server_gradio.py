@@ -3,30 +3,36 @@ import os
 from PIL import Image as PILImage
 
 from scripts.logger import get_last_logs
-from scripts.gallery_manager import show_gallery, delete_all_confirmed, download_all
+from scripts.gallery_data import item_details, list_items
+from scripts.gallery_manager import delete_all_confirmed
 from scripts.utils_validators import validate_positive_int
 
 
-def _gallery_value(path):
-    """Загружает thumbnails как PIL-объекты — обходит файловый сервер Gradio 6."""
-    output_root = os.path.dirname(path)           # /content/outputs
-    mode = os.path.basename(path)                 # text2img / img2img / controlnet
-    thumb_dir = os.path.join(output_root, "thumbnails", mode)
-
-    # Если thumbnails ещё нет — показываем оригиналы (resize на лету)
-    source_dir = thumb_dir if os.path.exists(thumb_dir) else path
-    paths = show_gallery(source_dir)
-
+def _gallery_value(items):
+    """Миниатюры с подписями «seed N · время». Миниатюры читаются как PIL: это обходит файловый сервер Gradio 6."""
     result = []
-    for p in paths:
+    for item in items:
         try:
-            img = PILImage.open(p).convert("RGB")
-            if source_dir == path:          # оригинал — уменьшаем
-                img.thumbnail((256, 256))
-            result.append((img, os.path.basename(p)))
+            img = PILImage.open(item["thumb"] or item["image"]).convert("RGB")
+            img.thumbnail((256, 256))
+            result.append((img, item["caption"]))
         except Exception:
             pass
     return result
+
+
+def _refresh(path):
+    """Свежий список картинок режима: значение галереи и сами записи (для выбора картинки)."""
+    items = list_items(path)
+    return _gallery_value(items), items
+
+
+def _textbox(label, **kw):
+    """Поле с кнопкой копирования; если эта версия Gradio не знает параметра, обычное поле."""
+    try:
+        return gr.Textbox(label=label, show_copy_button=True, **kw)
+    except TypeError:
+        return gr.Textbox(label=label, **kw)
 
 
 def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_LINES=50):
@@ -53,34 +59,53 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
             "Img2Img":    f"{output_dir}/img2img",
             "ControlNet": f"{output_dir}/controlnet",
             "Inpaint":    f"{output_dir}/inpaint",
+            "Upscale":    f"{output_dir}/upscale",
         }
 
         for name, path in gallery_tabs.items():
             os.makedirs(path, exist_ok=True)
+            items = list_items(path)
             with gr.Tab(f"{name} Gallery"):
+                state = gr.State(value=items)
                 gallery = gr.Gallery(
-                    value=_gallery_value(path),
+                    value=_gallery_value(items),
                     label=f"{name} results",
-                    columns=4,
-                    rows=3,
-                    height=480,
-                    object_fit="cover",
+                    columns=6,
+                    rows=2,
+                    height=420,
+                    object_fit="contain",
                 )
                 with gr.Row():
                     refresh_btn = gr.Button("🔄 Refresh")
                     confirm_cb  = gr.Checkbox(label="Подтверждаю удаление всех картинок", value=False)
                     delete_btn  = gr.Button("🗑️ Delete all")
 
-                refresh_btn.click(fn=lambda p=path: _gallery_value(p), outputs=gallery)
+                # Выбери миниатюру: ниже появятся seed и промпт (копируются кнопкой) и файл для скачивания
+                with gr.Row():
+                    seed_box = _textbox("Seed", interactive=False, lines=1)
+                    file_box = gr.File(label="Скачать оригинал", interactive=False)
+                prompt_box = _textbox("Prompt", interactive=False, lines=3)
+                params_box = _textbox("Параметры", interactive=False, lines=6)
+
+                def on_select(items_now, evt: gr.SelectData):
+                    index = getattr(evt, "index", None)
+                    if isinstance(index, (list, tuple)):
+                        index = index[0]
+                    item = items_now[index] if isinstance(index, int) and 0 <= index < len(items_now) else None
+                    d = item_details(item)
+                    return d["seed"], d["prompt"], d["params"], d["file"]
+
+                gallery.select(on_select, inputs=[state], outputs=[seed_box, prompt_box, params_box, file_box])
+                refresh_btn.click(fn=lambda p=path: _refresh(p), outputs=[gallery, state])
                 delete_btn.click(
-                    fn=lambda ok, p=path: (delete_all_confirmed(p, ok), _gallery_value(p))[1],
+                    fn=lambda ok, p=path: (delete_all_confirmed(p, ok), *_refresh(p))[1:],
                     inputs=confirm_cb,
-                    outputs=gallery
+                    outputs=[gallery, state]
                 ).then(fn=lambda: False, outputs=confirm_cb)
 
     subdirs = [output_dir] + [
         os.path.join(output_dir, d)
-        for d in ("text2img", "img2img", "controlnet", "inpaint", "upscale")
+        for d in ("text2img", "img2img", "controlnet", "inpaint", "upscale", "thumbnails")
     ]
     demo.launch(share=False, inline=False, server_port=7860,
                 quiet=True, allowed_paths=subdirs)

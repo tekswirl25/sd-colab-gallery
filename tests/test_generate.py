@@ -322,6 +322,16 @@ class ShowResultTest(ModesBase):
         generate.run_upscale(in_path=self.src, seed=1, prompt="", **common)
         self.assertEqual(len(self.shown), 4)
 
+    def test_latest_result_is_shown_as_a_small_thumbnail_not_full_size(self):
+        # в ноутбуке под ячейкой только миниатюра; полные картинки и история в галерее Gradio
+        big = Image.new("RGB", (1000, 500), "red")
+        generate._display(self.show, big, "x")
+        self.assertEqual(self.shown, [((256, 128), "x")])
+        self.assertEqual(big.size, (1000, 500))  # оригинал не тронут
+        small = Image.new("RGB", (100, 50))
+        generate._display(self.show, small, "y")
+        self.assertEqual(self.shown[1][0], (100, 50))  # маленькое не увеличивается
+
     def test_showing_does_not_break_generation_outside_a_notebook(self):
         # без IPython (как в этих тестах и в обычном python) показ молча пропускается
         paths = generate.run_upscale(config=self.config, in_path=self.src, seed=1, get_pipe=self.get_pipe,

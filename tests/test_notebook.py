@@ -130,7 +130,12 @@ class NotebookTest(unittest.TestCase):
                     if c["cell_type"] == "code" and "Start Gradio server" in "".join(c["source"]).splitlines()[0])
         self.assertIn('CONFIG["OUTPUT_DIR"]', cell)
         self.assertNotIn('"/content/outputs"', cell)
-        self.assertIn("show_inline", cell)  # галерея открывается внутри ячейки, а не ссылкой
+        self.assertIn("show_inline", cell)
+        # по умолчанию галерея открывается отдельной страницей по ссылке; встроенное окно под ячейкой по желанию
+        self.assertRegex(cell, r"INLINE\s*=\s*False")
+        lines = cell.splitlines()
+        call = next(i for i, l in enumerate(lines) if l.strip().startswith("show_inline("))
+        self.assertTrue(lines[call - 1].strip().startswith("if INLINE"), "show_inline вызывается без условия INLINE")
 
     def test_old_service_cells_are_gone_because_start_does_it_all(self):
         text = "\n".join(self.first_lines())

@@ -6,16 +6,21 @@
 import time
 
 
-def _display(show, image, caption=""):
-    """Показывает готовый кадр под ячейкой. Сбой показа не должен терять сохранённый результат."""
+def _display(show, image, caption="", max_side=256):
+    """
+    Показывает под ячейкой только миниатюру последнего кадра: полные картинки и вся история в галерее Gradio.
+    Сбой показа не должен терять сохранённый результат.
+    """
     try:
+        thumb = image.copy()
+        thumb.thumbnail((max_side, max_side))
         if show is None:
             from IPython.display import display
             if caption:
                 print(caption)
-            display(image)
+            display(thumb)
         else:
-            show(image, caption)
+            show(thumb, caption)
     except Exception:
         pass
 

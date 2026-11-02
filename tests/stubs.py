@@ -38,4 +38,5 @@ def install():
     logger.LOG_FILE = "/dev/null"
     logger.log_info = lambda *a, **k: None
     logger.log_error = lambda *a, **k: None
+    logger.get_last_logs = lambda n=50: ["<log>"]
     sys.modules["scripts.logger"] = logger

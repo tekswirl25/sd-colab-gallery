@@ -194,7 +194,7 @@ def build_ui(config, ip_ref_dir, upload_dir="/content", widgets=None, ipy_displa
             with result_out:
                 image_cls = getattr(ipy_display, "Image", None)
                 if image_cls:
-                    ipy_display.display(image_cls(saved, width=640))
+                    ipy_display.display(image_cls(saved, width=256))
         except Exception as e:
             with status_out:
                 ipy_display.clear_output()

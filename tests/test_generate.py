@@ -332,6 +332,33 @@ class ShowResultTest(ModesBase):
         generate._display(self.show, small, "y")
         self.assertEqual(self.shown[1][0], (100, 50))  # маленькое не увеличивается
 
+    def test_link_to_the_gallery_is_built_for_the_saved_image_and_passed_to_display(self):
+        from unittest import mock
+        seen = []
+        with mock.patch.object(generate, "_gallery_html", lambda path: f"<a>{os.path.basename(path)}</a>"), \
+             mock.patch.object(generate, "_display", lambda show, image, caption="", link_html=None: seen.append(link_html)):
+            generate.run_upscale(config=self.config, in_path=self.src, seed=1, get_pipe=self.get_pipe, save=self.save)
+        self.assertEqual(seen, ["<a>upscale.png</a>"])
+
+    def test_link_html_is_shown_after_the_thumbnail_in_a_notebook(self):
+        import sys
+        import types
+        shown = []
+        ipy = types.ModuleType("IPython.display")
+        ipy.display = lambda *a, **k: shown.extend(a)
+        ipy.HTML = lambda html: ("HTML", html)
+        pkg = types.ModuleType("IPython")
+        pkg.display = ipy
+        old = {k: sys.modules.get(k) for k in ("IPython", "IPython.display")}
+        sys.modules["IPython"], sys.modules["IPython.display"] = pkg, ipy
+        try:
+            generate._display(None, Image.new("RGB", (10, 10)), "cap", link_html="<a>go</a>")
+        finally:
+            for k, v in old.items():
+                sys.modules.pop(k, None) if v is None else sys.modules.__setitem__(k, v)
+        self.assertEqual(len(shown), 2)
+        self.assertEqual(shown[1], ("HTML", "<a>go</a>"))
+
     def test_showing_does_not_break_generation_outside_a_notebook(self):
         # без IPython (как в этих тестах и в обычном python) показ молча пропускается
         paths = generate.run_upscale(config=self.config, in_path=self.src, seed=1, get_pipe=self.get_pipe,

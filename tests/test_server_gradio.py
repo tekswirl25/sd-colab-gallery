@@ -37,6 +37,7 @@ class Comp:
         return reg
 
     click = _on("click")
+    load = _on("load")
     select = _on("select")
     then = _on("then")
 
@@ -46,8 +47,11 @@ class Comp:
 
 def fake_gradio():
     m = types.ModuleType("gradio")
-    for name in ("Blocks", "Tab", "Row", "Gallery", "Button", "Checkbox", "Textbox", "File", "State", "Markdown"):
+    for name in ("Blocks", "Tab", "Tabs", "Row", "Gallery", "Button", "Checkbox", "Textbox", "File", "State", "Markdown"):
         setattr(m, name, type(name, (Comp,), {}))
+    m.update = lambda **kw: ("update", kw)
+    m.skip = lambda: ("skip", {})
+    m.Request = type("Request", (), {})
     m.SelectData = type("SelectData", (), {"__init__": lambda self, index=None: setattr(self, "index", index)})
     return m
 
@@ -144,6 +148,43 @@ class ServerTest(unittest.TestCase):
         value, items = fn()
         self.assertIn("seed 99", value[0][1])
         self.assertEqual(items[0]["seed"], 99)
+
+    def load_handler(self):
+        demo = self.comps("Blocks")[0]
+        (kind, fn, inputs, outputs), = [h for h in demo.handlers if h[0] == "load"]
+        return fn, outputs
+
+    def test_tabs_have_stable_ids_so_a_link_can_open_the_right_one(self):
+        self.start()
+        ids = [t.kw.get("id") for t in self.comps("Tab")]
+        for key in ("text2img", "img2img", "controlnet", "inpaint", "upscale"):
+            self.assertIn(key, ids)
+
+    def test_link_opens_the_tab_and_the_image_details(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 11, "prompt": "a cat"})
+        self.add_image("text2img", "text2img_20261030_110000", {"seed": 12, "prompt": "a dog"})
+        self.start()
+        fn, outputs = self.load_handler()
+        req = types.SimpleNamespace(query_params={"mode": "text2img", "img": "text2img_20261030_100000"})
+        res = fn(req)
+        self.assertEqual(len(res), len(outputs))
+        self.assertEqual(res[0], ("update", {"selected": "text2img"}))            # вкладка
+        text2img = res[1:7]                                              # галерея, state, seed, prompt, params, file
+        self.assertEqual(text2img[0][0], "update")
+        self.assertEqual(text2img[0][1]["selected_index"], 1)            # вторая по порядку (новые первыми)
+        self.assertEqual(len(text2img[0][1]["value"]), 2)                # галерея заодно обновилась
+        self.assertEqual(len(text2img[1]), 2)                            # свежий список для выбора картинки
+        self.assertEqual((text2img[2], text2img[3]), ("11", "a cat"))
+        self.assertTrue(text2img[5].endswith("text2img_20261030_100000.png"))
+
+    def test_link_to_an_unknown_image_or_mode_changes_nothing(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 11})
+        self.start()
+        fn, outputs = self.load_handler()
+        for query in ({"mode": "text2img", "img": "nope"}, {"mode": "evil", "img": "x"}, {}):
+            res = fn(types.SimpleNamespace(query_params=query))
+            self.assertEqual(len(res), len(outputs))
+            self.assertTrue(all(r == ("skip", {}) for r in res), query)
 
     def test_delete_all_needs_confirmation(self):
         self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})

@@ -8,6 +8,7 @@ import re
 
 _IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp")
 _STAMP = re.compile(r"\d{8}_\d{6}")
+_SAFE_NAME = re.compile(r"^[A-Za-z0-9_.\-]+$")
 
 
 def _meta(image_path):
@@ -52,3 +53,22 @@ def item_details(item):
         "params": json.dumps(meta, ensure_ascii=False, indent=2) if meta else "",
         "file": item["image"],
     }
+
+
+def parse_link_query(query, modes):
+    """Параметры ссылки из ноутбука (?mode=text2img&img=имя). None, если что-то не так или имя небезопасно."""
+    if not query:
+        return None
+    mode, name = query.get("mode"), query.get("img")
+    if mode not in modes or not name or not _SAFE_NAME.match(name):
+        return None
+    return mode, name
+
+
+def find_item(items, name):
+    """Индекс картинки по имени (с расширением или без); None, если такой нет."""
+    base = os.path.splitext(name)[0] if os.path.splitext(name)[1].lower() in _IMAGE_EXT else name
+    for i, item in enumerate(items):
+        if item["name"] == base:
+            return i
+    return None

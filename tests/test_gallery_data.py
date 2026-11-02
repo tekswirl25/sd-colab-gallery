@@ -87,5 +87,30 @@ class GalleryDataTest(unittest.TestCase):
         self.assertEqual((d["seed"], d["prompt"], d["params"], d["file"]), ("", "", "", None))
 
 
+class LinkQueryTest(unittest.TestCase):
+    MODES = ("text2img", "img2img", "controlnet", "inpaint", "upscale")
+
+    def test_parse_valid_query(self):
+        q = gallery_data.parse_link_query({"mode": "text2img", "img": "text2img_20261030_100000"}, self.MODES)
+        self.assertEqual(q, ("text2img", "text2img_20261030_100000"))
+
+    def test_unknown_mode_or_missing_parts_give_none(self):
+        self.assertIsNone(gallery_data.parse_link_query({"mode": "evil", "img": "x"}, self.MODES))
+        self.assertIsNone(gallery_data.parse_link_query({"mode": "text2img"}, self.MODES))
+        self.assertIsNone(gallery_data.parse_link_query({}, self.MODES))
+        self.assertIsNone(gallery_data.parse_link_query(None, self.MODES))
+
+    def test_image_name_is_sanitised(self):
+        # в имени допустимы только буквы, цифры, подчёркивание, дефис и точка: никаких путей
+        self.assertIsNone(gallery_data.parse_link_query({"mode": "text2img", "img": "../../etc/passwd"}, self.MODES))
+        self.assertIsNone(gallery_data.parse_link_query({"mode": "text2img", "img": "a/b"}, self.MODES))
+
+    def test_find_item_by_name_with_or_without_extension(self):
+        items = [{"name": "b"}, {"name": "a"}]
+        self.assertEqual(gallery_data.find_item(items, "a"), 1)
+        self.assertEqual(gallery_data.find_item(items, "a.png"), 1)
+        self.assertIsNone(gallery_data.find_item(items, "zzz"))
+
+
 if __name__ == "__main__":
     unittest.main()

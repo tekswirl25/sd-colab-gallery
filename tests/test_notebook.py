@@ -43,7 +43,6 @@ class NotebookTest(unittest.TestCase):
 
     # ячейка: (часть заголовка, вызов, сколько строк кода допустимо)
     THIN = (
-        ("📥 Репозиторий", "git clone", 9),
         ("🚀 Старт", "setup_all", 12),
         ("🎨 Стиль и проект", "apply_style", 10),
         ("USA Safari — Генератор", "show_generator", 8),
@@ -80,10 +79,20 @@ class NotebookTest(unittest.TestCase):
             self.assertLessEqual(len(lines), 12, f"cell {i}: {len(lines)} строк кода")
 
     def test_start_cells_come_first_then_style_then_modes(self):
-        order = ("📥 Репозиторий", "🚀 Старт", "🎨 Стиль и проект", "Text2Img", "Img2Img — unified", "Upscale")
+        order = ("🚀 Старт", "🎨 Стиль и проект", "Text2Img", "Img2Img — unified", "Upscale")
         titles = self.first_lines()
         pos = [next(i for i, t in enumerate(titles) if k in t) for k in order]
         self.assertEqual(pos, sorted(pos))
+
+    def test_start_cell_is_self_sufficient_it_clones_the_repo_itself(self):
+        # две связанные ячейки (клон + старт) ломались: «No module named scripts», если первую не запускали
+        start = next("".join(c["source"]) for c in self.nb["cells"]
+                     if c["cell_type"] == "code" and "🚀 Старт" in "".join(c["source"]).splitlines()[0])
+        self.assertIn("git clone", start)
+        self.assertLess(start.index("git clone"), start.index("from scripts"))
+        self.assertLess(start.index("sys.path"), start.index("from scripts"))
+        self.assertNotIn("📥", "\n".join(self.first_lines()))
+        self.assertNotIn("📥", "".join(self.nb["cells"][0]["source"]) + "".join(self.nb["cells"][1]["source"]))
 
     def test_old_service_cells_are_gone_because_start_does_it_all(self):
         text = "\n".join(self.first_lines())

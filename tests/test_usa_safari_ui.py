@@ -238,6 +238,19 @@ class WidgetsTest(UiBase):
         ui.gen_btn.click()
         self.assertEqual(self.calls[1][5]["ip_ref_path"], "/drive/chars/A.jpg")
 
+    def test_result_is_a_small_thumbnail_with_a_link_to_the_gallery(self):
+        ui = self.build()
+        shown = []
+        self.disp.Image = lambda path, width=None: ("IMG", path, width)
+        self.disp.HTML = lambda html: ("HTML", html)
+        self.disp.display = lambda *a, **k: shown.extend(a)
+        ui.gen_btn.click()
+        kinds = [x[0] for x in shown if isinstance(x, tuple)]
+        self.assertIn("IMG", kinds)
+        img = next(x for x in shown if isinstance(x, tuple) and x[0] == "IMG")
+        self.assertLessEqual(img[2], 256)
+        self.assertIn("HTML", kinds)  # ссылка на кадр в галерее (или подсказка запустить её)
+
     def test_runner_error_is_shown_and_button_reenabled(self):
         def boom(*a, **k):
             raise ValueError("Для inpaint нужна маска")

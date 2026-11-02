@@ -45,6 +45,7 @@ class NotebookTest(unittest.TestCase):
     THIN = (
         ("🚀 Старт", "setup_all", 13),
         ("🎨 Стиль и проект", "apply_style", 11),
+        ("Start Gradio server", "start_gradio_server", 12),
         ("USA Safari — Генератор", "show_generator", 9),
         ("USA Safari — Drive Reference Setup", "setup_drive_reference", 9),
         ("🖼 Text2Img", "run_text2img", 10),
@@ -118,6 +119,23 @@ class NotebookTest(unittest.TestCase):
             self.assertIn("🚀 Старт", text.split("assert", 1)[1].splitlines()[0])
             code_before = [l for l in text.split("assert", 1)[0].splitlines() if l.strip() and not l.strip().startswith("#")]
             self.assertEqual(code_before, [], f"cell {i}: до проверки есть код")
+
+    def test_gradio_gallery_follows_the_current_output_folder(self):
+        # галерея должна смотреть туда, куда сохраняют режимы (папка из «Проект и стиль»), а не в /content/outputs
+        titles = self.first_lines()
+        gradio = next(i for i, t in enumerate(titles) if "Start Gradio server" in t)
+        style = next(i for i, t in enumerate(titles) if "🎨 Стиль и проект" in t)
+        self.assertGreater(gradio, style)
+        cell = next("".join(c["source"]) for c in self.nb["cells"]
+                    if c["cell_type"] == "code" and "Start Gradio server" in "".join(c["source"]).splitlines()[0])
+        self.assertIn('CONFIG["OUTPUT_DIR"]', cell)
+        self.assertNotIn('"/content/outputs"', cell)
+        self.assertIn("show_inline", cell)
+        # по умолчанию галерея открывается отдельной страницей по ссылке; встроенное окно под ячейкой по желанию
+        self.assertRegex(cell, r"INLINE\s*=\s*False")
+        lines = cell.splitlines()
+        call = next(i for i, l in enumerate(lines) if l.strip().startswith("show_inline("))
+        self.assertTrue(lines[call - 1].strip().startswith("if INLINE"), "show_inline вызывается без условия INLINE")
 
     def test_old_service_cells_are_gone_because_start_does_it_all(self):
         text = "\n".join(self.first_lines())

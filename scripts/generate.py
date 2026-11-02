@@ -6,8 +6,38 @@
 import time
 
 
+def _gallery_html(image_path):
+    """HTML-ссылка на этот кадр в галерее Gradio (или подсказка); пусто, если собрать не удалось."""
+    try:
+        from scripts.notebook_view import gallery_link_html
+        return gallery_link_html(image_path)
+    except Exception:
+        return ""
+
+
+def _display(show, image, caption="", link_html=None, max_side=256):
+    """
+    Показывает под ячейкой только миниатюру последнего кадра и рядом ссылку на него в галерее Gradio:
+    полные картинки и вся история в галерее. Сбой показа не должен терять сохранённый результат.
+    """
+    try:
+        thumb = image.copy()
+        thumb.thumbnail((max_side, max_side))
+        if show is None:
+            from IPython.display import HTML, display
+            if caption:
+                print(caption)
+            display(thumb)
+            if link_html:
+                display(HTML(link_html))
+        else:
+            show(thumb, caption)
+    except Exception:
+        pass
+
+
 def run_text2img(config, defaults, user_prompt, seed, n, style_suffix="", negative="",
-                 active_preset=None, get_pipe=None, save=None, variant_models=None):
+                 active_preset=None, get_pipe=None, save=None, variant_models=None, show=None):
     """
     Text2Img: n картинок с последовательными seed. Шаги, cfg и размер берутся из active_preset
     (ячейка «Проект и стиль»), чего в нём нет, берётся из defaults. Возвращает список путей PNG.
@@ -57,6 +87,7 @@ def run_text2img(config, defaults, user_prompt, seed, n, style_suffix="", negati
         path, _ = save(out.images[0], prefix="text2img", meta=meta,
                        output_dir=config["OUTPUT_DIR"], mode="text2img")
         saved.append(path)
+        _display(show, out.images[0], f"Text2Img | seed {current_seed}", link_html=_gallery_html(path))
     print(f"✅ Text2Img: сохранено {len(saved)} в {config['OUTPUT_DIR']}/text2img")
     return saved
 
@@ -98,7 +129,7 @@ def _report(title, img_path, meta_path):
 
 
 def run_img2img(config, defaults, user_prompt, seed, strength, base_style, color_tone, style_extra, negative,
-                src_path=None, get_pipe=None, save=None, variant_models=None):
+                src_path=None, get_pipe=None, save=None, variant_models=None, show=None):
     """Img2Img: фото -> иллюстрация. Исходник: src_path или файл из ячейки Upload. Возвращает (картинка, json)."""
     import torch
     from PIL import Image
@@ -122,11 +153,12 @@ def run_img2img(config, defaults, user_prompt, seed, strength, base_style, color
             "seed": seed, "source_path": src_path, "timestamp": time.strftime("%Y%m%d_%H%M%S")}
     paths = save(out.images[0], prefix="img2img", meta=meta, output_dir=config["OUTPUT_DIR"], mode="img2img")
     _report("Img2Img", *paths)
+    _display(show, out.images[0], f"Img2Img | seed {seed}", link_html=_gallery_html(paths[0]))
     return paths
 
 
 def run_controlnet(config, defaults, user_prompt, seed, low_thr, high_thr, base_style, color_tone, style_extra,
-                   negative, control_path=None, get_pipe=None, save=None, variant_models=None, canny=None):
+                   negative, control_path=None, get_pipe=None, save=None, variant_models=None, canny=None, show=None):
     """ControlNet (Canny): контуры фото задают композицию. Возвращает (картинка, json)."""
     import torch
     from PIL import Image
@@ -157,12 +189,13 @@ def run_controlnet(config, defaults, user_prompt, seed, low_thr, high_thr, base_
             "timestamp": time.strftime("%Y%m%d_%H%M%S")}
     paths = save(out.images[0], prefix="controlnet", meta=meta, output_dir=config["OUTPUT_DIR"], mode="controlnet")
     _report("ControlNet", *paths)
+    _display(show, out.images[0], f"ControlNet | seed {seed}", link_html=_gallery_html(paths[0]))
     print(f"⚙️ Thresholds: low={low_thr}, high={high_thr}")
     return paths
 
 
 def run_inpaint(config, defaults, user_prompt, seed, strength, base_style, color_tone, style_extra, negative,
-                src_path=None, mask_path=None, get_pipe=None, save=None, variant_models=None):
+                src_path=None, mask_path=None, get_pipe=None, save=None, variant_models=None, show=None):
     """Inpainting: белое в маске заменяется, чёрное сохраняется. Возвращает (картинка, json)."""
     import torch
     from PIL import Image
@@ -193,10 +226,11 @@ def run_inpaint(config, defaults, user_prompt, seed, strength, base_style, color
             "timestamp": time.strftime("%Y%m%d_%H%M%S")}
     paths = save(out.images[0], prefix="inpaint", meta=meta, output_dir=config["OUTPUT_DIR"], mode="inpaint")
     _report("Inpainting", *paths)
+    _display(show, out.images[0], f"Inpainting | seed {seed}", link_html=_gallery_html(paths[0]))
     return paths
 
 
-def run_upscale(config, in_path, seed, prompt="", get_pipe=None, save=None, variant_models=None):
+def run_upscale(config, in_path, seed, prompt="", get_pipe=None, save=None, variant_models=None, show=None):
     """Апскейл x4. Возвращает путь к сохранённой картинке."""
     import torch
     from PIL import Image
@@ -211,4 +245,5 @@ def run_upscale(config, in_path, seed, prompt="", get_pipe=None, save=None, vari
     meta = {"mode": "upscale_x4", "prompt": prompt, "seed": seed, "timestamp": time.strftime("%Y%m%d_%H%M%S")}
     path, _ = save(out.images[0], prefix="upscale", meta=meta, output_dir=config["OUTPUT_DIR"], mode="upscale")
     print(f"✅ Upscale saved: {path}")
+    _display(show, out.images[0], f"Upscale x4 | seed {seed}", link_html=_gallery_html(path))
     return path

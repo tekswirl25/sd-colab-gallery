@@ -194,7 +194,11 @@ def build_ui(config, ip_ref_dir, upload_dir="/content", widgets=None, ipy_displa
             with result_out:
                 image_cls = getattr(ipy_display, "Image", None)
                 if image_cls:
-                    ipy_display.display(image_cls(saved, width=640))
+                    ipy_display.display(image_cls(saved, width=256))
+                html_cls = getattr(ipy_display, "HTML", None)
+                if html_cls:
+                    from scripts.notebook_view import gallery_link_html
+                    ipy_display.display(html_cls(gallery_link_html(saved)))
         except Exception as e:
             with status_out:
                 ipy_display.clear_output()

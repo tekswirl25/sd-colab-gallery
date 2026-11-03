@@ -2,9 +2,14 @@
 # Автор: genai_colab. Данные для галереи Gradio без самого Gradio (тесты без него):
 # список картинок режима (новые первыми), подписи с seed, сведения для копирования и скачивания.
 
+import base64
+import html
+import io
 import json
 import os
 import re
+
+from PIL import Image
 
 _IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp")
 _STAMP = re.compile(r"\d{8}_\d{6}")
@@ -72,3 +77,95 @@ def find_item(items, name):
         if item["name"] == base:
             return i
     return None
+
+
+# ───────────── Просмотр без файлового сервера Gradio ─────────────
+# Gallery, File и Image отдают картинки через файловый сервер Gradio, в Colab они приходят битыми.
+# Поэтому картинки встраиваются в страницу (data URI), а удаление идёт напрямую по файлам.
+
+_MIME = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+
+
+def _jpeg_uri(path, side):
+    """JPEG data URI картинки, уменьшенной так, что большая сторона не больше side; оригинал не меняется."""
+    with Image.open(path) as im:
+        im = im.convert("RGB")
+        im.thumbnail((side, side))
+        buf = io.BytesIO()
+        im.save(buf, format="JPEG", quality=85)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def grid_html(items, limit=48, thumb_side=256):
+    """Сетка миниатюр с подписями, новые первыми; показаны последние limit, про остальные сказано."""
+    if not items:
+        return '<div style="font:14px sans-serif;color:#666">Картинок пока нет.</div>'
+    cards = []
+    for item in items[:limit]:
+        try:
+            uri = _jpeg_uri(item["thumb"] or item["image"], thumb_side)
+        except Exception:
+            continue
+        cards.append('<div style="width:%dpx;font:12px sans-serif"><img src="%s" style="width:100%%;border-radius:4px">'
+                     '<div>%s</div></div>' % (thumb_side, uri, html.escape(item["caption"])))
+    rest = len(items) - limit
+    note = f'<div style="font:12px sans-serif;color:#666">…и ещё {rest} (выбери кадр в списке)</div>' if rest > 0 else ""
+    return '<div style="display:flex;flex-wrap:wrap;gap:8px">' + "".join(cards) + "</div>" + note
+
+
+def view_html(item, preview_side=1024):
+    """Крупный просмотр кадра и ссылка на скачивание оригинала; пусто, если кадра нет."""
+    if not item:
+        return ""
+    try:
+        preview = _jpeg_uri(item["image"], preview_side)
+        with open(item["image"], "rb") as f:
+            raw = base64.b64encode(f.read()).decode("ascii")
+    except Exception:
+        return '<div style="font:14px sans-serif;color:#a00">Файл не удалось прочитать.</div>'
+    fname = os.path.basename(item["image"])
+    mime = _MIME.get(os.path.splitext(fname)[1].lower(), "application/octet-stream")
+    return ('<div style="font:14px sans-serif"><img src="%s" style="max-width:100%%;border-radius:4px">'
+            '<div style="margin-top:6px"><a download="%s" href="data:%s;base64,%s" role="button" '
+            'style="display:inline-block;padding:6px 14px;border-radius:6px;background:#1a73e8;color:#fff;'
+            'text-decoration:none">⬇ Скачать оригинал</a> %s</div></div>'
+            % (preview, html.escape(fname, quote=True), mime, raw, html.escape(fname)))
+
+
+def choices(items):
+    """Варианты для списка выбора: (подпись, имя), новые первыми."""
+    return [(item["caption"], item["name"]) for item in items]
+
+
+def neighbor(items, name, step):
+    """Имя соседнего кадра (step +1 или -1) по кругу; без выбора или с неизвестным именем первый кадр; None, если пусто."""
+    if not items:
+        return None
+    index = find_item(items, name) if name else None
+    if index is None:
+        return items[0]["name"]
+    return items[(index + step) % len(items)]["name"]
+
+
+def _remove(item):
+    """Удаляет картинку, её метаданные и миниатюру; True, если картинка удалена."""
+    removed = False
+    for path in (item["image"], item["image"] + ".json", item.get("thumb")):
+        if path and os.path.exists(path):
+            try:
+                os.remove(path)
+                removed = removed or path == item["image"]
+            except OSError:
+                pass
+    return removed
+
+
+def delete_one(items, name):
+    """Удаляет один кадр списка items по имени. Имя ищется только среди известных кадров: путей оно не задаёт."""
+    index = find_item(items, name) if name and _SAFE_NAME.match(name) else None
+    return index is not None and _remove(items[index])
+
+
+def delete_all(items):
+    """Удаляет все кадры списка; возвращает сколько удалено."""
+    return sum(1 for item in items if _remove(item))

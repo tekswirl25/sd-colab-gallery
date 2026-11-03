@@ -1,30 +1,13 @@
 import gradio as gr
 import os
-from PIL import Image as PILImage
 
 from scripts.logger import get_last_logs
-from scripts.gallery_data import find_item, item_details, list_items, parse_link_query
-from scripts.gallery_manager import delete_all_confirmed
+from scripts.gallery_data import (choices, delete_all, delete_one, find_item, grid_html, item_details,
+                                  list_items, neighbor, parse_link_query, view_html)
 from scripts.utils_validators import validate_positive_int
 
-
-def _gallery_value(items):
-    """Миниатюры с подписями «seed N · время». Миниатюры читаются как PIL: это обходит файловый сервер Gradio 6."""
-    result = []
-    for item in items:
-        try:
-            img = PILImage.open(item["thumb"] or item["image"]).convert("RGB")
-            img.thumbnail((256, 256))
-            result.append((img, item["caption"]))
-        except Exception:
-            pass
-    return result
-
-
-def _refresh(path):
-    """Свежий список картинок режима: значение галереи и сами записи (для выбора картинки)."""
-    items = list_items(path)
-    return _gallery_value(items), items
+# Картинки встроены в страницу, а не отдаются файловым сервером Gradio: в Colab его Gallery/File/Image
+# приходят битыми (см. scripts/gallery_data.py). Файлы читаются и удаляются прямо в папке вывода (Drive).
 
 
 def _textbox(label, **kw):
@@ -35,78 +18,114 @@ def _textbox(label, **kw):
         return gr.Textbox(label=label, **kw)
 
 
+def _logs_text(n):
+    return "\n".join(line.rstrip("\n") for line in get_last_logs(n))
+
+
+def _pick_update(items, name=None):
+    """Обновление списка выбора: свежие варианты и кадр name (или первый)."""
+    names = [i["name"] for i in items]
+    value = name if name in names else (names[0] if names else None)
+    return gr.update(choices=choices(items), value=value)
+
+
+def _details(items, name):
+    """Крупный просмотр, seed, prompt, параметры выбранного кадра; пусто, если кадра нет."""
+    index = find_item(items, name) if name else None
+    if index is None:
+        return "", "", "", ""
+    d = item_details(items[index])
+    return view_html(items[index]), d["seed"], d["prompt"], d["params"]
+
+
 def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_LINES=50):
     LOG_LINES = validate_positive_int(LOG_LINES, 50, "LOG_LINES")
 
     keys = {"text2img": "Text2Img", "img2img": "Img2Img", "controlnet": "ControlNet",
             "inpaint": "Inpaint", "upscale": "Upscale"}
     paths = {key: f"{output_dir}/{key}" for key in keys}
-    panels = {}  # key -> (gallery, state, seed_box, prompt_box, params_box, file_box)
+    panels = {}  # key -> (pick, state, grid, view, seed_box, prompt_box, params_box)
+
+    counts = {key: len(list_items(path)) for key, path in paths.items()}
+    print(f"📂 Галерея смотрит папку: {output_dir}")
+    print("🖼️ Уже есть: " + ", ".join(f"{keys[k]}: {n}" for k, n in counts.items()))
 
     with gr.Blocks() as demo:
         with gr.Tabs() as tabs:
 
             # ── Logs tab ──────────────────────────────────────────────────────────────
-            with gr.Tab("Logs", id="logs"):
+            with gr.Tab("Logs", id="logs") as logs_tab:
                 logs_box = gr.Textbox(
                     label=f"Last {LOG_LINES} log lines",
                     lines=LOG_LINES,
                     interactive=False
                 )
                 refresh_logs_btn = gr.Button("🔄 Refresh logs")
-                refresh_logs_btn.click(
-                    fn=lambda: "\n".join(get_last_logs(LOG_LINES)),
-                    outputs=logs_box
-                )
+                refresh_logs_btn.click(fn=lambda: _logs_text(LOG_LINES), outputs=logs_box)
+                logs_tab.select(fn=lambda: _logs_text(LOG_LINES), outputs=logs_box)
 
             # ── Gallery tabs ──────────────────────────────────────────────────────────
             for key, name in keys.items():
                 path = paths[key]
                 os.makedirs(path, exist_ok=True)
                 items = list_items(path)
+                first = items[0]["name"] if items else None
                 with gr.Tab(f"{name} Gallery", id=key):
                     state = gr.State(value=items)
-                    gallery = gr.Gallery(
-                        value=_gallery_value(items),
-                        label=f"{name} results",
-                        columns=6,
-                        rows=2,
-                        height=420,
-                        object_fit="contain",
-                    )
+                    grid = gr.HTML(value=grid_html(items), elem_id=f"{key}_grid")
+                    pick = gr.Dropdown(choices=choices(items), value=first, label="Кадр",
+                                       elem_id=f"{key}_pick", interactive=True)
                     with gr.Row():
+                        prev_btn = gr.Button("◀ Назад")
+                        next_btn = gr.Button("Вперёд ▶")
                         refresh_btn = gr.Button("🔄 Refresh")
-                        confirm_cb  = gr.Checkbox(label="Подтверждаю удаление всех картинок", value=False)
-                        delete_btn  = gr.Button("🗑️ Delete all")
-
-                    # Выбери миниатюру: ниже появятся seed и промпт (копируются кнопкой) и файл для скачивания
+                    view_value, seed_value, prompt_value, params_value = _details(items, first)
+                    view = gr.HTML(value=view_value, elem_id=f"{key}_view")
+                    seed_box = _textbox("Seed", interactive=False, lines=1, value=seed_value)
+                    prompt_box = _textbox("Prompt", interactive=False, lines=3, value=prompt_value)
+                    params_box = _textbox("Параметры", interactive=False, lines=6, value=params_value)
                     with gr.Row():
-                        seed_box = _textbox("Seed", interactive=False, lines=1)
-                        file_box = gr.File(label="Скачать оригинал", interactive=False)
-                    prompt_box = _textbox("Prompt", interactive=False, lines=3)
-                    params_box = _textbox("Параметры", interactive=False, lines=6)
-                    panels[key] = (gallery, state, seed_box, prompt_box, params_box, file_box)
+                        confirm_cb = gr.Checkbox(label="Подтверждаю удаление", value=False)
+                        delete_one_btn = gr.Button("🗑️ Delete selected")
+                        delete_all_btn = gr.Button("🗑️ Delete all")
+                    panels[key] = (pick, state, grid, view, seed_box, prompt_box, params_box)
 
-                    def on_select(items_now, evt: gr.SelectData):
-                        index = getattr(evt, "index", None)
-                        if isinstance(index, (list, tuple)):
-                            index = index[0]
-                        item = items_now[index] if isinstance(index, int) and 0 <= index < len(items_now) else None
-                        d = item_details(item)
-                        return d["seed"], d["prompt"], d["params"], d["file"]
+                    pick.change(fn=_details, inputs=[state, pick], outputs=[view, seed_box, prompt_box, params_box])
+                    next_btn.click(fn=lambda items_now, cur: neighbor(items_now, cur, +1),
+                                   inputs=[state, pick], outputs=pick)
+                    prev_btn.click(fn=lambda items_now, cur: neighbor(items_now, cur, -1),
+                                   inputs=[state, pick], outputs=pick)
 
-                    gallery.select(on_select, inputs=[state], outputs=[seed_box, prompt_box, params_box, file_box])
-                    refresh_btn.click(fn=lambda p=path: _refresh(p), outputs=[gallery, state])
-                    delete_btn.click(
-                        fn=lambda ok, p=path: (delete_all_confirmed(p, ok), *_refresh(p))[1:],
-                        inputs=confirm_cb,
-                        outputs=[gallery, state]
-                    ).then(fn=lambda: False, outputs=confirm_cb)
+                    def refresh(p=path, keep=None):
+                        fresh = list_items(p)
+                        return grid_html(fresh), fresh, _pick_update(fresh, keep)
 
-        # ── Ссылка из ноутбука: ?mode=text2img&img=имя открывает вкладку и эту картинку ────────
+                    def on_delete_one(ok, cur, items_now, p=path):
+                        if ok:
+                            index = find_item(items_now, cur) if cur else None
+                            delete_one(items_now, cur)
+                            fresh = list_items(p)
+                            near = fresh[min(index, len(fresh) - 1)]["name"] if fresh and index is not None else None
+                            return (grid_html(fresh), fresh, _pick_update(fresh, near), False)
+                        return (gr.skip(), gr.skip(), gr.skip(), gr.skip())
+
+                    def on_delete_all(ok, items_now, p=path):
+                        if ok:
+                            delete_all(items_now)
+                            fresh = list_items(p)
+                            return (grid_html(fresh), fresh, _pick_update(fresh), False)
+                        return (gr.skip(), gr.skip(), gr.skip(), gr.skip())
+
+                    refresh_btn.click(fn=refresh, outputs=[grid, state, pick])
+                    delete_one_btn.click(fn=on_delete_one, inputs=[confirm_cb, pick, state],
+                                         outputs=[grid, state, pick, confirm_cb])
+                    delete_all_btn.click(fn=on_delete_all, inputs=[confirm_cb, state],
+                                         outputs=[grid, state, pick, confirm_cb])
+
+        # ── Ссылка из ноутбука: ?mode=text2img&img=имя открывает вкладку и этот кадр ────────
         def on_load(request: gr.Request):
             skip = getattr(gr, "skip", None) or gr.update
-            result = [skip()] * (1 + 6 * len(keys))
+            result = [skip()] * (1 + 7 * len(keys))
             link = parse_link_query(getattr(request, "query_params", None), list(keys))
             if not link:
                 return result
@@ -115,16 +134,15 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
             index = find_item(items, name)
             if index is None:
                 return result
-            d = item_details(items[index])
-            base = 1 + 6 * list(keys).index(mode)
+            base = 1 + 7 * list(keys).index(mode)
             result[0] = gr.update(selected=mode)
-            result[base] = gr.update(value=_gallery_value(items), selected_index=index)
-            result[base + 1] = items
-            result[base + 2:base + 6] = [d["seed"], d["prompt"], d["params"], d["file"]]
+            result[base:base + 7] = [_pick_update(items, items[index]["name"]), items, grid_html(items),
+                                     *_details(items, items[index]["name"])]
             return result
 
         demo.load(on_load, inputs=None,
                   outputs=[tabs] + [comp for key in keys for comp in panels[key]])
+        demo.load(fn=lambda: _logs_text(LOG_LINES), outputs=logs_box)
 
     subdirs = [output_dir] + [
         os.path.join(output_dir, d)

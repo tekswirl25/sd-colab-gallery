@@ -112,5 +112,101 @@ class LinkQueryTest(unittest.TestCase):
         self.assertIsNone(gallery_data.find_item(items, "zzz"))
 
 
+class ViewerDataTest(GalleryDataTest):
+    """Просмотр без файлового сервера Gradio: картинки встроены в страницу, листание, удаление."""
+
+    def items3(self):
+        self.add("a_20261103_100000", {"seed": 1, "prompt": "p1"})
+        self.add("a_20261103_110000", {"seed": 2, "prompt": "p2"})
+        self.add("a_20261103_120000", {"seed": 3, "prompt": "p3"})
+        return gallery_data.list_items(self.dir)  # новые первыми: 12, 11, 10
+
+    def test_grid_embeds_every_thumbnail_and_its_caption(self):
+        html = gallery_data.grid_html(self.items3())
+        self.assertEqual(html.count("data:image/jpeg;base64,"), 3)
+        self.assertIn("seed 3", html)
+        self.assertLess(html.index("seed 3"), html.index("seed 1"))  # новые первыми
+
+    def test_grid_without_items_says_so_and_has_no_image(self):
+        html = gallery_data.grid_html([])
+        self.assertNotIn("<img", html)
+        self.assertTrue(html)
+
+    def test_grid_shows_only_the_latest_limit_and_tells_about_the_rest(self):
+        html = gallery_data.grid_html(self.items3(), limit=2)
+        self.assertEqual(html.count("<img"), 2)
+        self.assertIn("1", html.split("<img")[-1])  # сколько не показано
+
+    def test_grid_without_a_thumbnail_file_uses_the_original(self):
+        self.add("b_20261103_130000", {"seed": 5}, thumb=False)
+        html = gallery_data.grid_html(gallery_data.list_items(self.dir))
+        self.assertIn("data:image/jpeg;base64,", html)
+
+    def test_captions_are_escaped(self):
+        self.add("c_20261103_140000", {"seed": "<b>1</b>"})
+        html = gallery_data.grid_html(gallery_data.list_items(self.dir))
+        self.assertNotIn("<b>1</b>", html)
+
+    def test_view_embeds_a_big_preview_and_a_download_of_the_original(self):
+        item = self.items3()[0]
+        html = gallery_data.view_html(item)
+        self.assertIn("data:image/jpeg;base64,", html)  # крупный просмотр
+        self.assertIn('download="a_20261103_120000.png"', html)
+        self.assertIn("data:image/png;base64,", html)  # оригинал без изменений
+
+    def test_view_preview_is_limited_in_size_and_the_original_is_not_touched(self):
+        import base64
+        import io
+        Image.new("RGB", (2000, 1000), "red").save(os.path.join(self.dir, "big_20261103_150000.png"))
+        item = gallery_data.list_items(self.dir)[0]
+        html = gallery_data.view_html(item, preview_side=512)
+        b64 = html.split("data:image/jpeg;base64,")[1].split('"')[0]
+        self.assertEqual(max(Image.open(io.BytesIO(base64.b64decode(b64))).size), 512)
+        self.assertEqual(Image.open(item["image"]).size, (2000, 1000))
+
+    def test_view_of_nothing_is_empty(self):
+        self.assertEqual(gallery_data.view_html(None), "")
+
+    def test_choices_are_caption_and_name_newest_first(self):
+        ch = gallery_data.choices(self.items3())
+        self.assertEqual(ch[0][1], "a_20261103_120000")
+        self.assertIn("seed 3", ch[0][0])
+        self.assertEqual(len(ch), 3)
+
+    def test_neighbor_steps_and_wraps_around(self):
+        items = self.items3()
+        self.assertEqual(gallery_data.neighbor(items, "a_20261103_120000", +1), "a_20261103_110000")
+        self.assertEqual(gallery_data.neighbor(items, "a_20261103_120000", -1), "a_20261103_100000")  # по кругу
+        self.assertEqual(gallery_data.neighbor(items, "a_20261103_100000", +1), "a_20261103_120000")
+
+    def test_neighbor_with_unknown_or_no_selection_gives_the_first_item(self):
+        items = self.items3()
+        self.assertEqual(gallery_data.neighbor(items, None, +1), "a_20261103_120000")
+        self.assertEqual(gallery_data.neighbor(items, "zzz", -1), "a_20261103_120000")
+        self.assertIsNone(gallery_data.neighbor([], None, +1))
+
+    def test_delete_one_removes_image_metadata_and_thumbnail_only_of_that_item(self):
+        items = self.items3()
+        self.assertTrue(gallery_data.delete_one(items, "a_20261103_110000"))
+        left = sorted(os.listdir(self.dir))
+        self.assertNotIn("a_20261103_110000.png", left)
+        self.assertNotIn("a_20261103_110000.png.json", left)
+        self.assertFalse(os.path.exists(os.path.join(self.root, "thumbnails", "text2img", "a_20261103_110000.jpg")))
+        self.assertIn("a_20261103_120000.png", left)
+        self.assertIn("a_20261103_100000.png.json", left)
+
+    def test_delete_one_of_an_unknown_name_deletes_nothing(self):
+        items = self.items3()
+        self.assertFalse(gallery_data.delete_one(items, "nope"))
+        self.assertFalse(gallery_data.delete_one(items, "../x"))
+        self.assertEqual(len([f for f in os.listdir(self.dir) if f.endswith(".png")]), 3)
+
+    def test_delete_all_removes_images_metadata_and_thumbnails(self):
+        items = self.items3()
+        self.assertEqual(gallery_data.delete_all(items), 3)
+        self.assertEqual(os.listdir(self.dir), [])
+        self.assertEqual(os.listdir(os.path.join(self.root, "thumbnails", "text2img")), [])
+
+
 if __name__ == "__main__":
     unittest.main()

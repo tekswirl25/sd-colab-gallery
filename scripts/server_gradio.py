@@ -46,6 +46,10 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
     paths = {key: f"{output_dir}/{key}" for key in keys}
     panels = {}  # key -> (pick, state, grid, view, seed_box, prompt_box, params_box)
 
+    counts = {key: len(list_items(path)) for key, path in paths.items()}
+    print(f"📂 Галерея смотрит папку: {output_dir}")
+    print("🖼️ Уже есть: " + ", ".join(f"{keys[k]}: {n}" for k, n in counts.items()))
+
     with gr.Blocks() as demo:
         with gr.Tabs() as tabs:
 

@@ -94,6 +94,23 @@ class ServerTest(unittest.TestCase):
         return [c for c in Comp.registry if type(c).__name__ == kind and (label is None or c.kw.get("label") == label)]
 
 
+    def test_existing_files_are_loaded_at_start_and_the_report_names_the_folder_and_counts(self):
+        # файлы, уже лежащие на Drive, видны сразу, до любой генерации; вывод показывает, какую папку смотрит галерея
+        import contextlib
+        import io
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+        self.add_image("text2img", "text2img_20261030_110000", {"seed": 2})
+        self.add_image("upscale", "upscale_20261030_100000", {"seed": 3})
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.start()
+        out = buf.getvalue()
+        self.assertIn(self.out, out)
+        self.assertIn("Text2Img: 2", out)
+        self.assertIn("Upscale: 1", out)
+        self.assertIn("Img2Img: 0", out)
+        self.assertEqual(len(self.by_id("Dropdown", "text2img_pick").kw["choices"]), 2)
+
     def by_id(self, kind, elem_id):
         return [c for c in self.comps(kind) if c.kw.get("elem_id") == elem_id][0]
 

@@ -52,7 +52,7 @@ class Comp:
 
 def fake_gradio():
     m = types.ModuleType("gradio")
-    for name in ("Blocks", "Tab", "Tabs", "Row", "Gallery", "Button", "Checkbox", "Textbox", "File", "State", "Markdown", "HTML", "Dropdown"):
+    for name in ("Blocks", "Tab", "Tabs", "Row", "Gallery", "Button", "Checkbox", "Textbox", "File", "State", "Markdown", "HTML", "Dropdown", "CheckboxGroup"):
         setattr(m, name, type(name, (Comp,), {}))
     m.update = lambda **kw: ("update", kw)
     m.skip = lambda: ("skip", {})
@@ -237,26 +237,58 @@ class ServerTest(unittest.TestCase):
         self.start()
         self.add_image("text2img", "text2img_20261030_120000", {"seed": 99})
         (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "🔄 Refresh"), "click")
-        grid, items, pick = fn()
+        grid, items, pick, ticks = fn()
         self.assertIn("seed 99", grid)
         self.assertEqual(items[0]["seed"], 99)
         self.assertEqual(pick[1]["value"], "text2img_20261030_120000")
+        self.assertEqual(ticks[1]["choices"][0][1], "text2img_20261030_120000")
+        self.assertEqual(ticks[1]["value"], [])
 
-    def test_delete_selected_needs_confirmation_and_removes_only_that_frame(self):
+    def test_every_frame_can_be_ticked_in_a_numbered_list(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+        self.add_image("text2img", "text2img_20261030_110000", {"seed": 2})
+        self.start()
+        ticks = self.by_id("CheckboxGroup", "text2img_ticks")
+        self.assertEqual([v for _, v in ticks.kw["choices"]], ["text2img_20261030_110000", "text2img_20261030_100000"])
+        self.assertTrue(ticks.kw["choices"][0][0].startswith("1."))
+        self.assertEqual(ticks.kw["value"], [])
+
+    def test_tick_all_and_clear_ticks(self):
         self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
         self.add_image("text2img", "text2img_20261030_110000", {"seed": 2})
         self.start()
         state = self.comps("State")[0].kw["value"]
+        (kind, all_fn, inputs, outputs), = self.handlers(self.button("text2img", "Отметить все"), "click")
+        self.assertEqual(all_fn(state), ["text2img_20261030_110000", "text2img_20261030_100000"])
+        (kind, none_fn, inputs, outputs), = self.handlers(self.button("text2img", "Снять отметки"), "click")
+        self.assertEqual(none_fn(), [])
+
+    def test_delete_selected_needs_confirmation_and_removes_only_the_ticked_frames(self):
+        for h in (10, 11, 12):
+            self.add_image("text2img", f"text2img_20261030_{h}0000", {"seed": h})
+        self.start()
+        state = self.comps("State")[0].kw["value"]
+        ticked = ["text2img_20261030_120000", "text2img_20261030_100000"]
         (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "🗑️ Delete selected"), "click")
-        fn(False, "text2img_20261030_110000", state)
+        fn(False, ticked, "text2img_20261030_110000", state)
+        self.assertTrue(os.path.exists(self.png("text2img", "text2img_20261030_120000")))
+        grid, items, pick, tick_update, confirm = fn(True, ticked, "text2img_20261030_110000", state)
+        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_120000")))
+        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_100000")))
+        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_100000") + ".json"))
         self.assertTrue(os.path.exists(self.png("text2img", "text2img_20261030_110000")))
-        grid, items, pick, confirm = fn(True, "text2img_20261030_110000", state)
-        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_110000")))
-        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_110000") + ".json"))
+        self.assertEqual([i["name"] for i in items], ["text2img_20261030_110000"])
+        self.assertEqual(pick[1]["value"], "text2img_20261030_110000")
+        self.assertEqual(tick_update[1]["value"], [])  # отметки сбрасываются
+        self.assertFalse(confirm)
+
+    def test_delete_selected_with_nothing_ticked_deletes_nothing(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+        self.start()
+        state = self.comps("State")[0].kw["value"]
+        (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "🗑️ Delete selected"), "click")
+        fn(True, [], "text2img_20261030_100000", state)
         self.assertTrue(os.path.exists(self.png("text2img", "text2img_20261030_100000")))
-        self.assertEqual([i["name"] for i in items], ["text2img_20261030_100000"])
-        self.assertEqual(pick[1]["value"], "text2img_20261030_100000")  # просмотр переходит на соседний кадр
-        self.assertFalse(confirm)  # подтверждение сбрасывается
 
     def test_delete_all_needs_confirmation(self):
         self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
@@ -266,8 +298,9 @@ class ServerTest(unittest.TestCase):
         (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "🗑️ Delete all"), "click")
         fn(False, state)
         self.assertTrue(os.path.exists(self.png("text2img", "text2img_20261030_100000")))
-        grid, items, pick, confirm = fn(True, state)
+        grid, items, pick, tick_update, confirm = fn(True, state)
         self.assertEqual(items, [])
+        self.assertEqual(tick_update[1]["choices"], [])
         self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_100000")))
         self.assertIsNone(pick[1]["value"])
 

@@ -186,6 +186,25 @@ class ViewerDataTest(GalleryDataTest):
         self.assertTrue(ch[2][0].startswith("3."))
         self.assertIn("seed 3", ch[0][0])
 
+    def test_card_html_is_one_thumbnail_with_its_number_and_caption(self):
+        item = self.items3()[0]
+        html = gallery_data.card_html(item, 7)
+        self.assertEqual(html.count("<img"), 1)
+        self.assertIn("7.", html)
+        self.assertIn("seed 3", html)
+
+    def test_more_html_tells_how_many_frames_are_not_shown(self):
+        self.assertEqual(gallery_data.more_html(self.items3(), limit=48), "")
+        self.assertIn("1", gallery_data.more_html(self.items3(), limit=2))
+
+    def test_toggle_adds_and_removes_a_name_without_duplicates_or_mutation(self):
+        cur = ["a"]
+        self.assertEqual(gallery_data.toggle(cur, "b", True), ["a", "b"])
+        self.assertEqual(gallery_data.toggle(["a", "b"], "b", True), ["a", "b"])
+        self.assertEqual(gallery_data.toggle(["a", "b"], "a", False), ["b"])
+        self.assertEqual(gallery_data.toggle(["a"], "zz", False), ["a"])
+        self.assertEqual(cur, ["a"])
+
     def test_css_puts_each_tick_under_its_thumbnail(self):
         css = gallery_data.ticks_css(["text2img", "upscale"], thumb_side=256, gap=8)
         for key in ("text2img", "upscale"):

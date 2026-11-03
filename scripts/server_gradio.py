@@ -2,7 +2,7 @@ import gradio as gr
 import os
 
 from scripts.logger import get_last_logs
-from scripts.gallery_data import (ticks_css, choices, delete_all, delete_many, find_item, grid_html, item_details,
+from scripts.gallery_data import (THUMB_SIDE, card_html, more_html, toggle, ticks_css, choices, delete_all, delete_many, find_item, grid_html, item_details,
                                   list_items, neighbor, parse_link_query, tick_choices, view_html)
 from scripts.utils_validators import validate_positive_int
 
@@ -36,6 +36,38 @@ def _ticks_update(items):
     return gr.update(choices=tick_choices(items), value=[])
 
 
+PER_ROW = 6   # миниатюр в ряду
+SHOWN = 48    # сколько последних кадров рисуется на режим
+
+
+def _bump(view_now, all_on=False):
+    """Новое состояние сетки: номер перерисовки растёт, поэтому старые отметки не прилипают к новым галочкам."""
+    return {"gen": (view_now or {}).get("gen", 0) + 1, "all": all_on}
+
+
+def _make_draw(key, ticked):
+    """Функция для gr.render: под каждой миниатюрой её галочка; отмеченные имена копятся в состоянии ticked."""
+    def draw(items_now, view_now):
+        view_now = view_now or {}
+        if not items_now:
+            gr.HTML(value=grid_html([]))
+            return
+        gen, all_on = view_now.get("gen", 0), bool(view_now.get("all"))
+        shown = items_now[:SHOWN]
+        for start in range(0, len(shown), PER_ROW):
+            with gr.Row():
+                for number, item in enumerate(shown[start:start + PER_ROW], start + 1):
+                    with gr.Column(min_width=THUMB_SIDE):
+                        gr.HTML(value=card_html(item, number))
+                        box = gr.Checkbox(label="выбрать", value=all_on, key=f"{key}_{gen}_{item['name']}")
+                        box.change(fn=lambda on, cur, nm=item["name"]: toggle(cur, nm, on),
+                                   inputs=[box, ticked], outputs=ticked)
+        note = more_html(items_now, SHOWN)
+        if note:
+            gr.HTML(value=note)
+    return draw
+
+
 def _details(items, name):
     """Крупный просмотр, seed, prompt, параметры выбранного кадра; пусто, если кадра нет."""
     index = find_item(items, name) if name else None
@@ -47,6 +79,10 @@ def _details(items, name):
 
 def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_LINES=50):
     LOG_LINES = validate_positive_int(LOG_LINES, 50, "LOG_LINES")
+    # С gr.render под каждой миниатюрой своя галочка; в старом Gradio без него список галочек под сеткой.
+    dynamic = hasattr(gr, "render")
+    grid_value = (lambda items: "") if dynamic else grid_html
+    ticks_value = (lambda items: []) if dynamic else _ticks_update
 
     keys = {"text2img": "Text2Img", "img2img": "Img2Img", "controlnet": "ControlNet",
             "inpaint": "Inpaint", "upscale": "Upscale"}
@@ -81,9 +117,16 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                 first = items[0]["name"] if items else None
                 with gr.Tab(f"{name} Gallery", id=key):
                     state = gr.State(value=items)
-                    grid = gr.HTML(value=grid_html(items), elem_id=f"{key}_grid")
-                    ticks = gr.CheckboxGroup(choices=tick_choices(items), value=[], label="Отметить кадры (под своей миниатюрой)",
-                                             elem_id=f"{key}_ticks")
+                    if dynamic:
+                        vstate = gr.State(value={"gen": 0, "all": False})
+                        ticks = gr.State(value=[])
+                        grid = gr.HTML(value="", visible=False)  # заглушка: сетку рисует gr.render
+                        gr.render(inputs=[state, vstate])(_make_draw(key, ticks))
+                    else:
+                        vstate = None
+                        grid = gr.HTML(value=grid_html(items), elem_id=f"{key}_grid")
+                        ticks = gr.CheckboxGroup(choices=tick_choices(items), value=[],
+                                                 label="Отметить кадры (под своей миниатюрой)", elem_id=f"{key}_ticks")
                     with gr.Row():
                         tick_all_btn = gr.Button("Отметить все")
                         tick_none_btn = gr.Button("Снять отметки")
@@ -110,33 +153,44 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                     prev_btn.click(fn=lambda items_now, cur: neighbor(items_now, cur, -1),
                                    inputs=[state, pick], outputs=pick)
 
-                    tick_all_btn.click(fn=lambda items_now: [i["name"] for i in items_now],
-                                       inputs=state, outputs=ticks)
-                    tick_none_btn.click(fn=lambda: [], outputs=ticks)
+                    if dynamic:
+                        tick_all_btn.click(fn=lambda items_now, v: ([i["name"] for i in items_now], _bump(v, True)),
+                                           inputs=[state, vstate], outputs=[ticks, vstate])
+                        tick_none_btn.click(fn=lambda v: ([], _bump(v)), inputs=vstate, outputs=[ticks, vstate])
+                    else:
+                        tick_all_btn.click(fn=lambda items_now: [i["name"] for i in items_now],
+                                           inputs=state, outputs=ticks)
+                        tick_none_btn.click(fn=lambda: [], outputs=ticks)
 
-                    def refresh(p=path):
+                    extra_in = [vstate] if dynamic else []        # состояние сетки нужно только с gr.render
+                    extra_out = [vstate] if dynamic else []
+
+                    def refresh(*v, p=path):
                         fresh = list_items(p)
-                        return grid_html(fresh), fresh, _pick_update(fresh), _ticks_update(fresh)
+                        return (grid_value(fresh), fresh, _pick_update(fresh), ticks_value(fresh),
+                                *([_bump(v[0])] if v else []))
 
-                    def on_delete_selected(ok, ticked, cur, items_now, p=path):
+                    def on_delete_selected(ok, ticked, cur, items_now, *v, p=path):
                         if ok and ticked:
                             delete_many(items_now, ticked)
                             fresh = list_items(p)
-                            return (grid_html(fresh), fresh, _pick_update(fresh, cur), _ticks_update(fresh), False)
-                        return (gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip())
+                            return (grid_value(fresh), fresh, _pick_update(fresh, cur), ticks_value(fresh),
+                                    *([_bump(v[0])] if v else []), False)
+                        return (gr.skip(),) * (5 + len(v))
 
-                    def on_delete_all(ok, items_now, p=path):
+                    def on_delete_all(ok, items_now, *v, p=path):
                         if ok:
                             delete_all(items_now)
                             fresh = list_items(p)
-                            return (grid_html(fresh), fresh, _pick_update(fresh), _ticks_update(fresh), False)
-                        return (gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip())
+                            return (grid_value(fresh), fresh, _pick_update(fresh), ticks_value(fresh),
+                                    *([_bump(v[0])] if v else []), False)
+                        return (gr.skip(),) * (5 + len(v))
 
-                    refresh_btn.click(fn=refresh, outputs=[grid, state, pick, ticks])
-                    delete_sel_btn.click(fn=on_delete_selected, inputs=[confirm_cb, ticks, pick, state],
-                                         outputs=[grid, state, pick, ticks, confirm_cb])
-                    delete_all_btn.click(fn=on_delete_all, inputs=[confirm_cb, state],
-                                         outputs=[grid, state, pick, ticks, confirm_cb])
+                    refresh_btn.click(fn=refresh, inputs=extra_in or None, outputs=[grid, state, pick, ticks, *extra_out])
+                    delete_sel_btn.click(fn=on_delete_selected, inputs=[confirm_cb, ticks, pick, state, *extra_in],
+                                         outputs=[grid, state, pick, ticks, *extra_out, confirm_cb])
+                    delete_all_btn.click(fn=on_delete_all, inputs=[confirm_cb, state, *extra_in],
+                                         outputs=[grid, state, pick, ticks, *extra_out, confirm_cb])
 
         # ── Ссылка из ноутбука: ?mode=text2img&img=имя открывает вкладку и этот кадр ────────
         def on_load(request: gr.Request):
@@ -152,8 +206,8 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                 return result
             base = 1 + 8 * list(keys).index(mode)
             result[0] = gr.update(selected=mode)
-            result[base:base + 8] = [_pick_update(items, items[index]["name"]), items, grid_html(items),
-                                     *_details(items, items[index]["name"]), _ticks_update(items)]
+            result[base:base + 8] = [_pick_update(items, items[index]["name"]), items, grid_value(items),
+                                     *_details(items, items[index]["name"]), ticks_value(items)]
             return result
 
         demo.load(on_load, inputs=None,

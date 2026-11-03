@@ -253,6 +253,15 @@ class ServerTest(unittest.TestCase):
         self.assertTrue(ticks.kw["choices"][0][0].startswith("1."))
         self.assertEqual(ticks.kw["value"], [])
 
+    def test_ticks_sit_right_under_the_thumbnail_grid_and_are_styled_to_line_up_with_it(self):
+        self.start()
+        order = [c for c in Comp.registry if c.kw.get("elem_id") in ("text2img_grid", "text2img_ticks", "text2img_pick")]
+        self.assertEqual([c.kw["elem_id"] for c in order], ["text2img_grid", "text2img_ticks", "text2img_pick"])
+        style = [c for c in self.comps("HTML") if "<style>" in str(c.kw.get("value", ""))]
+        self.assertEqual(len(style), 1)
+        self.assertIn("#text2img_ticks", style[0].kw["value"])
+        self.assertIn("flex-wrap", style[0].kw["value"])
+
     def test_tick_all_and_clear_ticks(self):
         self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
         self.add_image("text2img", "text2img_20261030_110000", {"seed": 2})

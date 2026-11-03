@@ -2,7 +2,7 @@ import gradio as gr
 import os
 
 from scripts.logger import get_last_logs
-from scripts.gallery_data import (choices, delete_all, delete_many, find_item, grid_html, item_details,
+from scripts.gallery_data import (ticks_css, choices, delete_all, delete_many, find_item, grid_html, item_details,
                                   list_items, neighbor, parse_link_query, tick_choices, view_html)
 from scripts.utils_validators import validate_positive_int
 
@@ -58,6 +58,8 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
     print("🖼️ Уже есть: " + ", ".join(f"{keys[k]}: {n}" for k, n in counts.items()))
 
     with gr.Blocks() as demo:
+        # стиль в HTML-блоке, а не в параметре Blocks: так работает в любой версии Gradio
+        gr.HTML(value=f"<style>{ticks_css(list(keys))}</style>")
         with gr.Tabs() as tabs:
 
             # ── Logs tab ──────────────────────────────────────────────────────────────
@@ -80,6 +82,11 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                 with gr.Tab(f"{name} Gallery", id=key):
                     state = gr.State(value=items)
                     grid = gr.HTML(value=grid_html(items), elem_id=f"{key}_grid")
+                    ticks = gr.CheckboxGroup(choices=tick_choices(items), value=[], label="Отметить кадры (под своей миниатюрой)",
+                                             elem_id=f"{key}_ticks")
+                    with gr.Row():
+                        tick_all_btn = gr.Button("Отметить все")
+                        tick_none_btn = gr.Button("Снять отметки")
                     pick = gr.Dropdown(choices=choices(items), value=first, label="Кадр",
                                        elem_id=f"{key}_pick", interactive=True)
                     with gr.Row():
@@ -91,11 +98,6 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                     seed_box = _textbox("Seed", interactive=False, lines=1, value=seed_value)
                     prompt_box = _textbox("Prompt", interactive=False, lines=3, value=prompt_value)
                     params_box = _textbox("Параметры", interactive=False, lines=6, value=params_value)
-                    ticks = gr.CheckboxGroup(choices=tick_choices(items), value=[], label="Отметить кадры (номера как на миниатюрах)",
-                                             elem_id=f"{key}_ticks")
-                    with gr.Row():
-                        tick_all_btn = gr.Button("Отметить все")
-                        tick_none_btn = gr.Button("Снять отметки")
                     with gr.Row():
                         confirm_cb = gr.Checkbox(label="Подтверждаю удаление", value=False)
                         delete_sel_btn = gr.Button("🗑️ Delete selected")

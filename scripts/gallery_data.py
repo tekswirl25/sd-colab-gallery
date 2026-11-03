@@ -96,21 +96,33 @@ def _jpeg_uri(path, side):
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
-def grid_html(items, limit=48, thumb_side=256):
+THUMB_SIDE = 256  # ширина миниатюры в сетке и галочки под ней
+GRID_GAP = 8      # промежуток между миниатюрами и между галочками
+
+
+def ticks_css(keys, thumb_side=THUMB_SIDE, gap=GRID_GAP):
+    """Стиль: галочки списка отметок выстроены в сетку той же ширины и с теми же промежутками, что миниатюры, и стоят под ними."""
+    return "".join(
+        f"#{key}_ticks .wrap {{ display: flex; flex-wrap: wrap; gap: {gap}px; }} "
+        f"#{key}_ticks label {{ width: {thumb_side}px; box-sizing: border-box; }} "
+        for key in keys)
+
+
+def grid_html(items, limit=48, thumb_side=THUMB_SIDE, gap=GRID_GAP):
     """Сетка миниатюр с подписями, новые первыми; показаны последние limit, про остальные сказано."""
     if not items:
         return '<div style="font:14px sans-serif;color:#666">Картинок пока нет.</div>'
     cards = []
-    for item in items[:limit]:
+    for number, item in enumerate(items[:limit], 1):
         try:
             uri = _jpeg_uri(item["thumb"] or item["image"], thumb_side)
         except Exception:
             continue
         cards.append('<div style="width:%dpx;font:12px sans-serif"><img src="%s" style="width:100%%;border-radius:4px">'
-                     '<div>%s</div></div>' % (thumb_side, uri, html.escape(item["caption"])))
+                     '<div>%d. %s</div></div>' % (thumb_side, uri, number, html.escape(item["caption"])))
     rest = len(items) - limit
     note = f'<div style="font:12px sans-serif;color:#666">…и ещё {rest} (выбери кадр в списке)</div>' if rest > 0 else ""
-    return '<div style="display:flex;flex-wrap:wrap;gap:8px">' + "".join(cards) + "</div>" + note
+    return f'<div style="display:flex;flex-wrap:wrap;gap:{gap}px">' + "".join(cards) + "</div>" + note
 
 
 def view_html(item, preview_side=1024):
@@ -135,6 +147,11 @@ def view_html(item, preview_side=1024):
 def choices(items):
     """Варианты для списка выбора: (подпись, имя), новые первыми."""
     return [(item["caption"], item["name"]) for item in items]
+
+
+def tick_choices(items):
+    """Варианты для отметки нескольких кадров: «номер. подпись» (номер тот же, что на миниатюре в сетке) и имя."""
+    return [(f"{number}. {item['caption']}", item["name"]) for number, item in enumerate(items, 1)]
 
 
 def neighbor(items, name, step):
@@ -169,3 +186,8 @@ def delete_one(items, name):
 def delete_all(items):
     """Удаляет все кадры списка; возвращает сколько удалено."""
     return sum(1 for item in items if _remove(item))
+
+
+def delete_many(items, names):
+    """Удаляет отмеченные кадры списка items по именам; неизвестные и небезопасные имена пропускаются. Возвращает сколько удалено."""
+    return sum(1 for name in dict.fromkeys(names or []) if delete_one(items, name))

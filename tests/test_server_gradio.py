@@ -17,10 +17,14 @@ stubs.install()
 class Comp:
     registry = []
     reject_copy_button = False
+    rejected_kwargs = ()  # параметры Textbox, которых эта (подставная) версия Gradio не знает
 
     def __init__(self, *args, **kw):
         if self.reject_copy_button and "show_copy_button" in kw and type(self).__name__ == "Textbox":
             raise TypeError("unexpected keyword show_copy_button")
+        for bad in self.rejected_kwargs:
+            if bad in kw and type(self).__name__ == "Textbox":
+                raise TypeError(f"unexpected keyword {bad}")
         self.args, self.kw, self.handlers = args, kw, []
         Comp.registry.append(self)
 
@@ -48,7 +52,7 @@ class Comp:
 
 def fake_gradio():
     m = types.ModuleType("gradio")
-    for name in ("Blocks", "Tab", "Tabs", "Row", "Gallery", "Button", "Checkbox", "Textbox", "File", "State", "Markdown", "HTML", "Dropdown"):
+    for name in ("Blocks", "Tab", "Tabs", "Row", "Gallery", "Button", "Checkbox", "Textbox", "File", "State", "Markdown", "HTML", "Dropdown", "CheckboxGroup"):
         setattr(m, name, type(name, (Comp,), {}))
     m.update = lambda **kw: ("update", kw)
     m.skip = lambda: ("skip", {})
@@ -61,6 +65,7 @@ class ServerTest(unittest.TestCase):
     def setUp(self):
         Comp.registry = []
         Comp.reject_copy_button = False
+        Comp.rejected_kwargs = ()
         self.tmp = tempfile.TemporaryDirectory()
         self.out = self.tmp.name
         self.gr = fake_gradio()
@@ -93,6 +98,16 @@ class ServerTest(unittest.TestCase):
     def comps(self, kind, label=None):
         return [c for c in Comp.registry if type(c).__name__ == kind and (label is None or c.kw.get("label") == label)]
 
+
+    def test_the_start_report_names_the_gradio_version(self):
+        # версия нужна, чтобы по выводу ячейки видеть, какой API у Gradio (6 заменил show_copy_button на buttons)
+        import contextlib
+        import io
+        self.gr.__version__ = "6.2.0"
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.start()
+        self.assertIn("Gradio 6.2.0", buf.getvalue())
 
     def test_existing_files_are_loaded_at_start_and_the_report_names_the_folder_and_counts(self):
         # файлы, уже лежащие на Drive, видны сразу, до любой генерации; вывод показывает, какую папку смотрит галерея
@@ -185,15 +200,25 @@ class ServerTest(unittest.TestCase):
         (kind, fn, inputs, outputs), = self.handlers(pick, "change")
         self.assertEqual(fn([], None), ("", "", "", ""))
 
+    def copy_kwargs(self, label):
+        box = self.comps("Textbox", label)[0]
+        return box.kw.get("buttons"), box.kw.get("show_copy_button")
+
     def test_detail_boxes_are_read_only_with_copy_buttons(self):
         self.start()
         for label in ("Seed", "Prompt", "Параметры"):
             box = self.comps("Textbox", label)[0]
             self.assertFalse(box.kw.get("interactive", True), label)
-            self.assertTrue(box.kw.get("show_copy_button"), label)
+            self.assertEqual(self.copy_kwargs(label), (["copy"], None), label)  # Gradio 6: buttons=["copy"]
+
+    def test_older_gradio_without_buttons_gets_show_copy_button(self):
+        Comp.rejected_kwargs = ("buttons",)
+        self.start()
+        for label in ("Seed", "Prompt", "Параметры"):
+            self.assertEqual(self.copy_kwargs(label), (None, True), label)
 
     def test_server_still_builds_when_gradio_has_no_copy_button_option(self):
-        Comp.reject_copy_button = True
+        Comp.rejected_kwargs = ("buttons", "show_copy_button")
         self.start()  # не должно упасть: ячейка с копированием откатывается на обычное поле
         self.assertTrue(self.comps("Textbox", "Seed"))
 
@@ -212,26 +237,67 @@ class ServerTest(unittest.TestCase):
         self.start()
         self.add_image("text2img", "text2img_20261030_120000", {"seed": 99})
         (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "🔄 Refresh"), "click")
-        grid, items, pick = fn()
+        grid, items, pick, ticks = fn()
         self.assertIn("seed 99", grid)
         self.assertEqual(items[0]["seed"], 99)
         self.assertEqual(pick[1]["value"], "text2img_20261030_120000")
+        self.assertEqual(ticks[1]["choices"][0][1], "text2img_20261030_120000")
+        self.assertEqual(ticks[1]["value"], [])
 
-    def test_delete_selected_needs_confirmation_and_removes_only_that_frame(self):
+    def test_every_frame_can_be_ticked_in_a_numbered_list(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+        self.add_image("text2img", "text2img_20261030_110000", {"seed": 2})
+        self.start()
+        ticks = self.by_id("CheckboxGroup", "text2img_ticks")
+        self.assertEqual([v for _, v in ticks.kw["choices"]], ["text2img_20261030_110000", "text2img_20261030_100000"])
+        self.assertTrue(ticks.kw["choices"][0][0].startswith("1."))
+        self.assertEqual(ticks.kw["value"], [])
+
+    def test_ticks_sit_right_under_the_thumbnail_grid_and_are_styled_to_line_up_with_it(self):
+        self.start()
+        order = [c for c in Comp.registry if c.kw.get("elem_id") in ("text2img_grid", "text2img_ticks", "text2img_pick")]
+        self.assertEqual([c.kw["elem_id"] for c in order], ["text2img_grid", "text2img_ticks", "text2img_pick"])
+        style = [c for c in self.comps("HTML") if "<style>" in str(c.kw.get("value", ""))]
+        self.assertEqual(len(style), 1)
+        self.assertIn("#text2img_ticks", style[0].kw["value"])
+        self.assertIn("flex-wrap", style[0].kw["value"])
+
+    def test_tick_all_and_clear_ticks(self):
         self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
         self.add_image("text2img", "text2img_20261030_110000", {"seed": 2})
         self.start()
         state = self.comps("State")[0].kw["value"]
+        (kind, all_fn, inputs, outputs), = self.handlers(self.button("text2img", "Отметить все"), "click")
+        self.assertEqual(all_fn(state), ["text2img_20261030_110000", "text2img_20261030_100000"])
+        (kind, none_fn, inputs, outputs), = self.handlers(self.button("text2img", "Снять отметки"), "click")
+        self.assertEqual(none_fn(), [])
+
+    def test_delete_selected_needs_confirmation_and_removes_only_the_ticked_frames(self):
+        for h in (10, 11, 12):
+            self.add_image("text2img", f"text2img_20261030_{h}0000", {"seed": h})
+        self.start()
+        state = self.comps("State")[0].kw["value"]
+        ticked = ["text2img_20261030_120000", "text2img_20261030_100000"]
         (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "🗑️ Delete selected"), "click")
-        fn(False, "text2img_20261030_110000", state)
+        fn(False, ticked, "text2img_20261030_110000", state)
+        self.assertTrue(os.path.exists(self.png("text2img", "text2img_20261030_120000")))
+        grid, items, pick, tick_update, confirm = fn(True, ticked, "text2img_20261030_110000", state)
+        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_120000")))
+        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_100000")))
+        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_100000") + ".json"))
         self.assertTrue(os.path.exists(self.png("text2img", "text2img_20261030_110000")))
-        grid, items, pick, confirm = fn(True, "text2img_20261030_110000", state)
-        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_110000")))
-        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_110000") + ".json"))
+        self.assertEqual([i["name"] for i in items], ["text2img_20261030_110000"])
+        self.assertEqual(pick[1]["value"], "text2img_20261030_110000")
+        self.assertEqual(tick_update[1]["value"], [])  # отметки сбрасываются
+        self.assertFalse(confirm)
+
+    def test_delete_selected_with_nothing_ticked_deletes_nothing(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+        self.start()
+        state = self.comps("State")[0].kw["value"]
+        (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "🗑️ Delete selected"), "click")
+        fn(True, [], "text2img_20261030_100000", state)
         self.assertTrue(os.path.exists(self.png("text2img", "text2img_20261030_100000")))
-        self.assertEqual([i["name"] for i in items], ["text2img_20261030_100000"])
-        self.assertEqual(pick[1]["value"], "text2img_20261030_100000")  # просмотр переходит на соседний кадр
-        self.assertFalse(confirm)  # подтверждение сбрасывается
 
     def test_delete_all_needs_confirmation(self):
         self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
@@ -241,8 +307,9 @@ class ServerTest(unittest.TestCase):
         (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "🗑️ Delete all"), "click")
         fn(False, state)
         self.assertTrue(os.path.exists(self.png("text2img", "text2img_20261030_100000")))
-        grid, items, pick, confirm = fn(True, state)
+        grid, items, pick, tick_update, confirm = fn(True, state)
         self.assertEqual(items, [])
+        self.assertEqual(tick_update[1]["choices"], [])
         self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_100000")))
         self.assertIsNone(pick[1]["value"])
 

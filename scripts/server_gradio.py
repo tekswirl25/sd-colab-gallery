@@ -2,8 +2,8 @@ import gradio as gr
 import os
 
 from scripts.logger import get_last_logs
-from scripts.gallery_data import (choices, delete_all, delete_one, find_item, grid_html, item_details,
-                                  list_items, neighbor, parse_link_query, view_html)
+from scripts.gallery_data import (ticks_css, choices, delete_all, delete_many, find_item, grid_html, item_details,
+                                  list_items, neighbor, parse_link_query, tick_choices, view_html)
 from scripts.utils_validators import validate_positive_int
 
 # Картинки встроены в страницу, а не отдаются файловым сервером Gradio: в Colab его Gallery/File/Image
@@ -11,11 +11,13 @@ from scripts.utils_validators import validate_positive_int
 
 
 def _textbox(label, **kw):
-    """Поле с кнопкой копирования; если эта версия Gradio не знает параметра, обычное поле."""
-    try:
-        return gr.Textbox(label=label, show_copy_button=True, **kw)
-    except TypeError:
-        return gr.Textbox(label=label, **kw)
+    """Поле с кнопкой копирования: Gradio 6 buttons=["copy"], старый show_copy_button, иначе обычное поле."""
+    for extra in ({"buttons": ["copy"]}, {"show_copy_button": True}, {}):
+        try:
+            return gr.Textbox(label=label, **extra, **kw)
+        except TypeError:
+            continue
+    return gr.Textbox(label=label, **kw)
 
 
 def _logs_text(n):
@@ -27,6 +29,11 @@ def _pick_update(items, name=None):
     names = [i["name"] for i in items]
     value = name if name in names else (names[0] if names else None)
     return gr.update(choices=choices(items), value=value)
+
+
+def _ticks_update(items):
+    """Список отметок: свежие кадры, отметки сняты."""
+    return gr.update(choices=tick_choices(items), value=[])
 
 
 def _details(items, name):
@@ -44,13 +51,15 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
     keys = {"text2img": "Text2Img", "img2img": "Img2Img", "controlnet": "ControlNet",
             "inpaint": "Inpaint", "upscale": "Upscale"}
     paths = {key: f"{output_dir}/{key}" for key in keys}
-    panels = {}  # key -> (pick, state, grid, view, seed_box, prompt_box, params_box)
+    panels = {}  # key -> (pick, state, grid, view, seed_box, prompt_box, params_box, ticks)
 
     counts = {key: len(list_items(path)) for key, path in paths.items()}
-    print(f"📂 Галерея смотрит папку: {output_dir}")
+    print(f"📂 Галерея смотрит папку: {output_dir} (Gradio {getattr(gr, '__version__', '?')})")
     print("🖼️ Уже есть: " + ", ".join(f"{keys[k]}: {n}" for k, n in counts.items()))
 
     with gr.Blocks() as demo:
+        # стиль в HTML-блоке, а не в параметре Blocks: так работает в любой версии Gradio
+        gr.HTML(value=f"<style>{ticks_css(list(keys))}</style>")
         with gr.Tabs() as tabs:
 
             # ── Logs tab ──────────────────────────────────────────────────────────────
@@ -73,6 +82,11 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                 with gr.Tab(f"{name} Gallery", id=key):
                     state = gr.State(value=items)
                     grid = gr.HTML(value=grid_html(items), elem_id=f"{key}_grid")
+                    ticks = gr.CheckboxGroup(choices=tick_choices(items), value=[], label="Отметить кадры (под своей миниатюрой)",
+                                             elem_id=f"{key}_ticks")
+                    with gr.Row():
+                        tick_all_btn = gr.Button("Отметить все")
+                        tick_none_btn = gr.Button("Снять отметки")
                     pick = gr.Dropdown(choices=choices(items), value=first, label="Кадр",
                                        elem_id=f"{key}_pick", interactive=True)
                     with gr.Row():
@@ -86,9 +100,9 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                     params_box = _textbox("Параметры", interactive=False, lines=6, value=params_value)
                     with gr.Row():
                         confirm_cb = gr.Checkbox(label="Подтверждаю удаление", value=False)
-                        delete_one_btn = gr.Button("🗑️ Delete selected")
+                        delete_sel_btn = gr.Button("🗑️ Delete selected")
                         delete_all_btn = gr.Button("🗑️ Delete all")
-                    panels[key] = (pick, state, grid, view, seed_box, prompt_box, params_box)
+                    panels[key] = (pick, state, grid, view, seed_box, prompt_box, params_box, ticks)
 
                     pick.change(fn=_details, inputs=[state, pick], outputs=[view, seed_box, prompt_box, params_box])
                     next_btn.click(fn=lambda items_now, cur: neighbor(items_now, cur, +1),
@@ -96,36 +110,38 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
                     prev_btn.click(fn=lambda items_now, cur: neighbor(items_now, cur, -1),
                                    inputs=[state, pick], outputs=pick)
 
-                    def refresh(p=path, keep=None):
-                        fresh = list_items(p)
-                        return grid_html(fresh), fresh, _pick_update(fresh, keep)
+                    tick_all_btn.click(fn=lambda items_now: [i["name"] for i in items_now],
+                                       inputs=state, outputs=ticks)
+                    tick_none_btn.click(fn=lambda: [], outputs=ticks)
 
-                    def on_delete_one(ok, cur, items_now, p=path):
-                        if ok:
-                            index = find_item(items_now, cur) if cur else None
-                            delete_one(items_now, cur)
+                    def refresh(p=path):
+                        fresh = list_items(p)
+                        return grid_html(fresh), fresh, _pick_update(fresh), _ticks_update(fresh)
+
+                    def on_delete_selected(ok, ticked, cur, items_now, p=path):
+                        if ok and ticked:
+                            delete_many(items_now, ticked)
                             fresh = list_items(p)
-                            near = fresh[min(index, len(fresh) - 1)]["name"] if fresh and index is not None else None
-                            return (grid_html(fresh), fresh, _pick_update(fresh, near), False)
-                        return (gr.skip(), gr.skip(), gr.skip(), gr.skip())
+                            return (grid_html(fresh), fresh, _pick_update(fresh, cur), _ticks_update(fresh), False)
+                        return (gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip())
 
                     def on_delete_all(ok, items_now, p=path):
                         if ok:
                             delete_all(items_now)
                             fresh = list_items(p)
-                            return (grid_html(fresh), fresh, _pick_update(fresh), False)
-                        return (gr.skip(), gr.skip(), gr.skip(), gr.skip())
+                            return (grid_html(fresh), fresh, _pick_update(fresh), _ticks_update(fresh), False)
+                        return (gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip())
 
-                    refresh_btn.click(fn=refresh, outputs=[grid, state, pick])
-                    delete_one_btn.click(fn=on_delete_one, inputs=[confirm_cb, pick, state],
-                                         outputs=[grid, state, pick, confirm_cb])
+                    refresh_btn.click(fn=refresh, outputs=[grid, state, pick, ticks])
+                    delete_sel_btn.click(fn=on_delete_selected, inputs=[confirm_cb, ticks, pick, state],
+                                         outputs=[grid, state, pick, ticks, confirm_cb])
                     delete_all_btn.click(fn=on_delete_all, inputs=[confirm_cb, state],
-                                         outputs=[grid, state, pick, confirm_cb])
+                                         outputs=[grid, state, pick, ticks, confirm_cb])
 
         # ── Ссылка из ноутбука: ?mode=text2img&img=имя открывает вкладку и этот кадр ────────
         def on_load(request: gr.Request):
             skip = getattr(gr, "skip", None) or gr.update
-            result = [skip()] * (1 + 7 * len(keys))
+            result = [skip()] * (1 + 8 * len(keys))
             link = parse_link_query(getattr(request, "query_params", None), list(keys))
             if not link:
                 return result
@@ -134,10 +150,10 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
             index = find_item(items, name)
             if index is None:
                 return result
-            base = 1 + 7 * list(keys).index(mode)
+            base = 1 + 8 * list(keys).index(mode)
             result[0] = gr.update(selected=mode)
-            result[base:base + 7] = [_pick_update(items, items[index]["name"]), items, grid_html(items),
-                                     *_details(items, items[index]["name"])]
+            result[base:base + 8] = [_pick_update(items, items[index]["name"]), items, grid_html(items),
+                                     *_details(items, items[index]["name"]), _ticks_update(items)]
             return result
 
         demo.load(on_load, inputs=None,

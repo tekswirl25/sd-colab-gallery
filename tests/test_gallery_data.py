@@ -173,6 +173,45 @@ class ViewerDataTest(GalleryDataTest):
         self.assertIn("seed 3", ch[0][0])
         self.assertEqual(len(ch), 3)
 
+    def test_grid_numbers_the_frames_so_they_can_be_ticked_in_the_list(self):
+        html = gallery_data.grid_html(self.items3())
+        self.assertLess(html.index("1."), html.index("2."))
+        self.assertIn("3.", html)
+
+    def test_tick_choices_carry_the_same_numbers_as_the_grid(self):
+        ch = gallery_data.tick_choices(self.items3())
+        self.assertEqual([v for _, v in ch],
+                         ["a_20261103_120000", "a_20261103_110000", "a_20261103_100000"])
+        self.assertTrue(ch[0][0].startswith("1."))
+        self.assertTrue(ch[2][0].startswith("3."))
+        self.assertIn("seed 3", ch[0][0])
+
+    def test_css_puts_each_tick_under_its_thumbnail(self):
+        css = gallery_data.ticks_css(["text2img", "upscale"], thumb_side=256, gap=8)
+        for key in ("text2img", "upscale"):
+            self.assertIn(f"#{key}_ticks", css)
+        self.assertIn("flex-wrap: wrap", css)
+        self.assertIn("gap: 8px", css)          # промежуток как в сетке миниатюр
+        self.assertIn("width: 256px", css)      # ширина галочки как у миниатюры
+
+    def test_grid_uses_the_same_width_and_gap_as_the_css(self):
+        html = gallery_data.grid_html(self.items3(), thumb_side=200, gap=5)
+        self.assertIn("width:200px", html)
+        self.assertIn("gap:5px", html)
+
+    def test_delete_many_removes_only_the_ticked_frames(self):
+        items = self.items3()
+        n = gallery_data.delete_many(items, ["a_20261103_120000", "a_20261103_100000"])
+        self.assertEqual(n, 2)
+        self.assertEqual(sorted(f for f in os.listdir(self.dir) if f.endswith(".png")), ["a_20261103_110000.png"])
+        self.assertFalse(os.path.exists(os.path.join(self.dir, "a_20261103_120000.png.json")))
+
+    def test_delete_many_ignores_unknown_and_unsafe_names_and_empty_ticks(self):
+        items = self.items3()
+        self.assertEqual(gallery_data.delete_many(items, ["nope", "../x", None]), 0)
+        self.assertEqual(gallery_data.delete_many(items, []), 0)
+        self.assertEqual(len([f for f in os.listdir(self.dir) if f.endswith(".png")]), 3)
+
     def test_neighbor_steps_and_wraps_around(self):
         items = self.items3()
         self.assertEqual(gallery_data.neighbor(items, "a_20261103_120000", +1), "a_20261103_110000")

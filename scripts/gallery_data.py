@@ -108,6 +108,25 @@ def ticks_css(keys, thumb_side=THUMB_SIDE, gap=GRID_GAP):
         for key in keys)
 
 
+def card_html(item, number, thumb_side=THUMB_SIDE):
+    """Одна карточка: миниатюра (встроена в страницу) и подпись «номер. seed · время»."""
+    uri = _jpeg_uri(item["thumb"] or item["image"], thumb_side)
+    return ('<div style="width:%dpx;font:12px sans-serif"><img src="%s" style="width:100%%;border-radius:4px">'
+            '<div>%d. %s</div></div>' % (thumb_side, uri, number, html.escape(item["caption"])))
+
+
+def more_html(items, limit=48):
+    """Пометка, сколько кадров не показано в сетке; пусто, если показаны все."""
+    rest = len(items) - limit
+    return f'<div style="font:12px sans-serif;color:#666">…и ещё {rest} (выбери кадр в списке)</div>' if rest > 0 else ""
+
+
+def toggle(current, name, on):
+    """Список отмеченных имён после того, как кадр name отметили (on) или сняли отметку; исходный список не меняется."""
+    names = [n for n in (current or []) if n != name]
+    return names + [name] if on else names
+
+
 def grid_html(items, limit=48, thumb_side=THUMB_SIDE, gap=GRID_GAP):
     """Сетка миниатюр с подписями, новые первыми; показаны последние limit, про остальные сказано."""
     if not items:
@@ -115,14 +134,10 @@ def grid_html(items, limit=48, thumb_side=THUMB_SIDE, gap=GRID_GAP):
     cards = []
     for number, item in enumerate(items[:limit], 1):
         try:
-            uri = _jpeg_uri(item["thumb"] or item["image"], thumb_side)
+            cards.append(card_html(item, number, thumb_side))
         except Exception:
             continue
-        cards.append('<div style="width:%dpx;font:12px sans-serif"><img src="%s" style="width:100%%;border-radius:4px">'
-                     '<div>%d. %s</div></div>' % (thumb_side, uri, number, html.escape(item["caption"])))
-    rest = len(items) - limit
-    note = f'<div style="font:12px sans-serif;color:#666">…и ещё {rest} (выбери кадр в списке)</div>' if rest > 0 else ""
-    return f'<div style="display:flex;flex-wrap:wrap;gap:{gap}px">' + "".join(cards) + "</div>" + note
+    return f'<div style="display:flex;flex-wrap:wrap;gap:{gap}px">' + "".join(cards) + "</div>" + more_html(items, limit)
 
 
 def view_html(item, preview_side=1024):

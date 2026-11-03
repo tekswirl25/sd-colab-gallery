@@ -50,9 +50,19 @@ class Comp:
         self.launched = kw
 
 
-def fake_gradio():
+RENDERS = []  # функции, зарегистрированные через gr.render: (функция, входы)
+
+
+def fake_gradio(with_render=False):
     m = types.ModuleType("gradio")
-    for name in ("Blocks", "Tab", "Tabs", "Row", "Gallery", "Button", "Checkbox", "Textbox", "File", "State", "Markdown", "HTML", "Dropdown", "CheckboxGroup"):
+    if with_render:
+        def render(inputs=None, **kw):
+            def deco(fn):
+                RENDERS.append((fn, inputs))
+                return fn
+            return deco
+        m.render = render
+    for name in ("Blocks", "Tab", "Tabs", "Row", "Gallery", "Button", "Checkbox", "Textbox", "File", "State", "Markdown", "HTML", "Dropdown", "CheckboxGroup", "Column"):
         setattr(m, name, type(name, (Comp,), {}))
     m.update = lambda **kw: ("update", kw)
     m.skip = lambda: ("skip", {})
@@ -62,13 +72,16 @@ def fake_gradio():
 
 
 class ServerTest(unittest.TestCase):
+    WITH_RENDER = False  # старый Gradio без gr.render: галочки списком под сеткой
+
     def setUp(self):
         Comp.registry = []
         Comp.reject_copy_button = False
         Comp.rejected_kwargs = ()
+        RENDERS.clear()
         self.tmp = tempfile.TemporaryDirectory()
         self.out = self.tmp.name
-        self.gr = fake_gradio()
+        self.gr = fake_gradio(self.WITH_RENDER)
         sys.modules["gradio"] = self.gr
         utils = types.ModuleType("scripts.utils")
         utils.list_images = lambda folder: []
@@ -357,6 +370,99 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(fn(), "first\nsecond")
         refresh = [c for c in self.comps("Button") if c.args and c.args[0] == "🔄 Refresh logs"][0]
         self.assertEqual(refresh.handlers[0][1](), "first\nsecond")
+
+
+class DynamicServerTest(ServerTest):
+    """Есть gr.render: под каждой миниатюрой своя галочка."""
+    WITH_RENDER = True
+
+    def drawn(self, key="text2img", gen=0, all_on=False):
+        """Выполняет функцию отрисовки сетки режима key и возвращает созданные ею компоненты по порядку."""
+        before = len(Comp.registry)
+        fn, inputs = RENDERS[["text2img", "img2img", "controlnet", "inpaint", "upscale"].index(key)]
+        state = self.comps("State")[["text2img", "img2img", "controlnet", "inpaint", "upscale"].index(key) * 3]
+        items = state.kw["value"]
+        fn(items, {"gen": gen, "all": all_on})
+        return Comp.registry[before:]
+
+    def test_every_mode_registers_a_grid_renderer_that_depends_on_the_frames_and_the_view(self):
+        self.start()
+        self.assertEqual(len(RENDERS), 5)
+        for fn, inputs in RENDERS:
+            self.assertEqual(len(inputs), 2)
+
+    def test_each_thumbnail_has_its_own_checkbox_right_under_it(self):
+        for h in (10, 11, 12):
+            self.add_image("text2img", f"text2img_20261030_{h}0000", {"seed": h})
+        self.start()
+        made = [c for c in self.drawn() if type(c).__name__ in ("HTML", "Checkbox")]
+        self.assertEqual([type(c).__name__ for c in made], ["HTML", "Checkbox"] * 3)
+        self.assertIn("data:image/jpeg;base64,", made[0].kw["value"])
+
+    def test_the_checkbox_keys_change_with_the_view_generation_so_old_marks_do_not_stick(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+        self.start()
+        k0 = [c.kw["key"] for c in self.drawn(gen=0) if type(c).__name__ == "Checkbox"]
+        k1 = [c.kw["key"] for c in self.drawn(gen=1) if type(c).__name__ == "Checkbox"]
+        self.assertNotEqual(k0, k1)
+
+    def test_tick_all_view_draws_checked_boxes(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+        self.start()
+        boxes = [c for c in self.drawn(all_on=True) if type(c).__name__ == "Checkbox"]
+        self.assertTrue(all(b.kw["value"] for b in boxes))
+        boxes = [c for c in self.drawn(all_on=False) if type(c).__name__ == "Checkbox"]
+        self.assertFalse(any(b.kw["value"] for b in boxes))
+
+    def test_ticking_a_box_adds_the_frame_and_unticking_removes_it(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+        self.start()
+        box = [c for c in self.drawn() if type(c).__name__ == "Checkbox"][0]
+        (kind, fn, inputs, outputs), = self.handlers(box, "change")
+        self.assertEqual(fn(True, []), ["text2img_20261030_100000"])
+        self.assertEqual(fn(False, ["text2img_20261030_100000"]), [])
+
+    def test_there_is_no_separate_list_of_ticks_in_this_mode(self):
+        self.start()
+        self.assertEqual(self.comps("CheckboxGroup"), [])
+
+    def test_empty_folder_draws_a_note_instead_of_thumbnails(self):
+        self.start()
+        made = self.drawn()
+        self.assertEqual([c for c in made if type(c).__name__ == "Checkbox"], [])
+        self.assertTrue([c for c in made if type(c).__name__ == "HTML"])
+
+    def test_tick_all_marks_every_frame_and_redraws_checked(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+        self.add_image("text2img", "text2img_20261030_110000", {"seed": 2})
+        self.start()
+        state = self.comps("State")[0].kw["value"]
+        (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "Отметить все"), "click")
+        ticked, view = fn(state, {"gen": 3, "all": False})
+        self.assertEqual(ticked, ["text2img_20261030_110000", "text2img_20261030_100000"])
+        self.assertEqual(view, {"gen": 4, "all": True})
+        (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "Снять отметки"), "click")
+        self.assertEqual(fn({"gen": 4, "all": True}), ([], {"gen": 5, "all": False}))
+
+    def test_delete_selected_removes_ticked_frames_and_redraws_without_marks(self):
+        for h in (10, 11, 12):
+            self.add_image("text2img", f"text2img_20261030_{h}0000", {"seed": h})
+        self.start()
+        state = self.comps("State")[0].kw["value"]
+        ticked = ["text2img_20261030_120000", "text2img_20261030_100000"]
+        (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "🗑️ Delete selected"), "click")
+        grid, items, pick, new_ticked, view, confirm = fn(True, ticked, "text2img_20261030_110000", state,
+                                                           {"gen": 0, "all": True})
+        self.assertEqual([i["name"] for i in items], ["text2img_20261030_110000"])
+        self.assertEqual(new_ticked, [])
+        self.assertEqual(view, {"gen": 1, "all": False})
+        self.assertFalse(confirm)
+        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_120000")))
+
+
+for _name in [n for n in dir(ServerTest) if n.startswith("test_")]:
+    if _name not in DynamicServerTest.__dict__:
+        setattr(DynamicServerTest, _name, None)  # унаследованные тесты старого режима здесь не выполняются
 
 
 if __name__ == "__main__":

@@ -11,11 +11,13 @@ from scripts.utils_validators import validate_positive_int
 
 
 def _textbox(label, **kw):
-    """Поле с кнопкой копирования; если эта версия Gradio не знает параметра, обычное поле."""
-    try:
-        return gr.Textbox(label=label, show_copy_button=True, **kw)
-    except TypeError:
-        return gr.Textbox(label=label, **kw)
+    """Поле с кнопкой копирования: Gradio 6 buttons=["copy"], старый show_copy_button, иначе обычное поле."""
+    for extra in ({"buttons": ["copy"]}, {"show_copy_button": True}, {}):
+        try:
+            return gr.Textbox(label=label, **extra, **kw)
+        except TypeError:
+            continue
+    return gr.Textbox(label=label, **kw)
 
 
 def _logs_text(n):
@@ -47,7 +49,7 @@ def start_gradio_server(output_dir="/content/outputs", refresh_interval=5, LOG_L
     panels = {}  # key -> (pick, state, grid, view, seed_box, prompt_box, params_box)
 
     counts = {key: len(list_items(path)) for key, path in paths.items()}
-    print(f"📂 Галерея смотрит папку: {output_dir}")
+    print(f"📂 Галерея смотрит папку: {output_dir} (Gradio {getattr(gr, '__version__', '?')})")
     print("🖼️ Уже есть: " + ", ".join(f"{keys[k]}: {n}" for k, n in counts.items()))
 
     with gr.Blocks() as demo:

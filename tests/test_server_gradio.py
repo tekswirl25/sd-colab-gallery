@@ -17,10 +17,14 @@ stubs.install()
 class Comp:
     registry = []
     reject_copy_button = False
+    rejected_kwargs = ()  # параметры Textbox, которых эта (подставная) версия Gradio не знает
 
     def __init__(self, *args, **kw):
         if self.reject_copy_button and "show_copy_button" in kw and type(self).__name__ == "Textbox":
             raise TypeError("unexpected keyword show_copy_button")
+        for bad in self.rejected_kwargs:
+            if bad in kw and type(self).__name__ == "Textbox":
+                raise TypeError(f"unexpected keyword {bad}")
         self.args, self.kw, self.handlers = args, kw, []
         Comp.registry.append(self)
 
@@ -61,6 +65,7 @@ class ServerTest(unittest.TestCase):
     def setUp(self):
         Comp.registry = []
         Comp.reject_copy_button = False
+        Comp.rejected_kwargs = ()
         self.tmp = tempfile.TemporaryDirectory()
         self.out = self.tmp.name
         self.gr = fake_gradio()
@@ -93,6 +98,16 @@ class ServerTest(unittest.TestCase):
     def comps(self, kind, label=None):
         return [c for c in Comp.registry if type(c).__name__ == kind and (label is None or c.kw.get("label") == label)]
 
+
+    def test_the_start_report_names_the_gradio_version(self):
+        # версия нужна, чтобы по выводу ячейки видеть, какой API у Gradio (6 заменил show_copy_button на buttons)
+        import contextlib
+        import io
+        self.gr.__version__ = "6.2.0"
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.start()
+        self.assertIn("Gradio 6.2.0", buf.getvalue())
 
     def test_existing_files_are_loaded_at_start_and_the_report_names_the_folder_and_counts(self):
         # файлы, уже лежащие на Drive, видны сразу, до любой генерации; вывод показывает, какую папку смотрит галерея
@@ -185,15 +200,25 @@ class ServerTest(unittest.TestCase):
         (kind, fn, inputs, outputs), = self.handlers(pick, "change")
         self.assertEqual(fn([], None), ("", "", "", ""))
 
+    def copy_kwargs(self, label):
+        box = self.comps("Textbox", label)[0]
+        return box.kw.get("buttons"), box.kw.get("show_copy_button")
+
     def test_detail_boxes_are_read_only_with_copy_buttons(self):
         self.start()
         for label in ("Seed", "Prompt", "Параметры"):
             box = self.comps("Textbox", label)[0]
             self.assertFalse(box.kw.get("interactive", True), label)
-            self.assertTrue(box.kw.get("show_copy_button"), label)
+            self.assertEqual(self.copy_kwargs(label), (["copy"], None), label)  # Gradio 6: buttons=["copy"]
+
+    def test_older_gradio_without_buttons_gets_show_copy_button(self):
+        Comp.rejected_kwargs = ("buttons",)
+        self.start()
+        for label in ("Seed", "Prompt", "Параметры"):
+            self.assertEqual(self.copy_kwargs(label), (None, True), label)
 
     def test_server_still_builds_when_gradio_has_no_copy_button_option(self):
-        Comp.reject_copy_button = True
+        Comp.rejected_kwargs = ("buttons", "show_copy_button")
         self.start()  # не должно упасть: ячейка с копированием откатывается на обычное поле
         self.assertTrue(self.comps("Textbox", "Seed"))
 

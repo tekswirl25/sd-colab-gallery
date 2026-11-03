@@ -2,7 +2,9 @@
 # Автор: genai_colab. Показ галереи Gradio внутри ячейки Colab (встроенное окно), без поиска ссылок.
 
 
+import base64
 import html
+import io
 import os
 import socket
 from urllib.parse import urlencode
@@ -38,12 +40,34 @@ def gallery_url(image_path, base_url=None, running=None, port=7860):
     return f"{base}/?{urlencode({'mode': mode, 'img': name})}"
 
 
+_BUTTON = ("display:inline-block;margin-top:6px;padding:6px 14px;border-radius:6px;font:14px sans-serif;"
+           "text-decoration:none;")
+
+
 def gallery_link_html(image_path, base_url=None, running=None, port=7860):
-    """HTML рядом с миниатюрой: ссылка на эту картинку в галерее или подсказка, как запустить галерею."""
+    """Кнопка под миниатюрой: открывает этот кадр в галерее Gradio; без запущенной галереи неактивная кнопка с подсказкой."""
     url = gallery_url(image_path, base_url, running, port)
     if url:
-        return f'<a href="{html.escape(url, quote=True)}" target="_blank">🔎 Открыть в галерее: seed, промпт, скачать</a>'
-    return "<small>Галерея не запущена: запусти ячейку 🌐 Gradio, и здесь появится ссылка на этот кадр.</small>"
+        return (f'<a role="button" href="{html.escape(url, quote=True)}" target="_blank" '
+                f'style="{_BUTTON}background:#1a73e8;color:#fff;">🔎 Открыть в галерее: seed, промпт, скачать</a>')
+    return (f'<span role="button" aria-disabled="true" '
+            f'style="{_BUTTON}background:#e0e0e0;color:#666;">Галерея не запущена: запусти ячейку 🌐 Gradio, '
+            f'и здесь станет кнопка на этот кадр</span>')
+
+
+def thumbnail_card_html(image, caption="", button_html=None):
+    """Один блок: подпись, миниатюра (встроена в страницу, без файлового сервера) и сразу под ней кнопка."""
+    buf = io.BytesIO()
+    image.convert("RGB").save(buf, format="JPEG", quality=85)
+    data = base64.b64encode(buf.getvalue()).decode("ascii")
+    parts = ['<div style="font:14px sans-serif">']
+    if caption:
+        parts.append(f"<div>{html.escape(caption)}</div>")
+    parts.append(f'<img src="data:image/jpeg;base64,{data}" style="display:block;margin-top:4px;border-radius:4px">')
+    if button_html:
+        parts.append(button_html)
+    parts.append("</div>")
+    return "".join(parts)
 
 
 def show_inline(port=7860, height=700, colab_output=None):

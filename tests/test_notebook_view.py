@@ -48,6 +48,16 @@ class GalleryLinkTest(unittest.TestCase):
         self.assertIn('href="http://h:7860/?mode=text2img&amp;img=a"', html)  # & в HTML-атрибуте записывается как &amp;
         self.assertIn('target="_blank"', html)
 
+    def test_link_looks_like_a_button(self):
+        html = notebook_view.gallery_link_html("/o/text2img/a.png", base_url="http://h:7860", running=True)
+        self.assertIn('role="button"', html)
+        self.assertIn("border-radius", html)
+        self.assertIn("background", html)
+
+    def test_hint_without_a_running_gallery_is_a_disabled_button(self):
+        html = notebook_view.gallery_link_html("/o/text2img/a.png", base_url="http://h:7860", running=False)
+        self.assertIn('aria-disabled="true"', html)
+
     def test_html_hints_to_start_the_gallery_when_it_is_not_running(self):
         html = notebook_view.gallery_link_html("/o/text2img/a.png", base_url="http://h:7860", running=False)
         self.assertNotIn("href", html)
@@ -68,3 +78,25 @@ class GalleryLinkTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ThumbnailCardTest(unittest.TestCase):
+    def setUp(self):
+        from PIL import Image
+        self.image = Image.new("RGB", (30, 20), "red")
+
+    def test_thumbnail_is_embedded_so_no_file_server_is_needed(self):
+        html = notebook_view.thumbnail_card_html(self.image, "cap", "<a>go</a>")
+        self.assertIn('src="data:image/jpeg;base64,', html)
+
+    def test_button_comes_right_after_the_thumbnail_in_the_same_block(self):
+        html = notebook_view.thumbnail_card_html(self.image, "cap", "<a>go</a>")
+        self.assertLess(html.index("<img"), html.index("<a>go</a>"))
+
+    def test_caption_is_escaped(self):
+        html = notebook_view.thumbnail_card_html(self.image, "<b>x</b>", "")
+        self.assertNotIn("<b>x</b>", html)
+        self.assertIn("&lt;b&gt;x&lt;/b&gt;", html)
+
+    def test_card_works_without_a_button(self):
+        self.assertIn("<img", notebook_view.thumbnail_card_html(self.image, "cap", None))

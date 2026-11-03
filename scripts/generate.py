@@ -3,7 +3,24 @@
 # и вызов; вся логика здесь. Тяжёлые зависимости (loaders, utils) импортируются при вызове,
 # их можно подменить (тесты без GPU).
 
+import functools
 import time
+
+
+class MissingInput(Exception):
+    """Нет входного файла: путь не задан или файла нет. Это не сбой кода, а подсказка пользователю."""
+
+
+def _stops_on_missing_input(run):
+    """Нет входного файла: печатает одну строку с подсказкой и возвращает None. Остальные ошибки не скрываются."""
+    @functools.wraps(run)
+    def wrapper(*args, **kwargs):
+        try:
+            return run(*args, **kwargs)
+        except MissingInput as e:
+            print(e)
+            return None
+    return wrapper
 
 
 def _gallery_html(image_path):
@@ -25,11 +42,8 @@ def _display(show, image, caption="", link_html=None, max_side=256):
         thumb.thumbnail((max_side, max_side))
         if show is None:
             from IPython.display import HTML, display
-            if caption:
-                print(caption)
-            display(thumb)
-            if link_html:
-                display(HTML(link_html))
+            from scripts.notebook_view import thumbnail_card_html
+            display(HTML(thumbnail_card_html(thumb, caption, link_html)))
         else:
             show(thumb, caption)
     except Exception:
@@ -100,12 +114,12 @@ def _final_prompt(user_prompt, base_style, color_tone, style_extra):
 
 
 def _need_file(path, kind, label, hint):
-    """Путь должен быть задан и существовать; иначе понятная ошибка с подсказкой, что запустить."""
+    """Путь должен быть задан и существовать; иначе MissingInput с подсказкой, что запустить."""
     import os
     if not path:
-        raise ValueError(f"⚠️ {label} не задан. {hint}")
+        raise MissingInput(f"⚠️ {label} не задан. {hint}")
     if not os.path.exists(path):
-        raise FileNotFoundError(f"⚠️ Файл не найден: {path}")
+        raise MissingInput(f"⚠️ Файл не найден: {path}")
     return path
 
 
@@ -128,6 +142,7 @@ def _report(title, img_path, meta_path):
     print("🧾 Meta:", meta_path)
 
 
+@_stops_on_missing_input
 def run_img2img(config, defaults, user_prompt, seed, strength, base_style, color_tone, style_extra, negative,
                 src_path=None, get_pipe=None, save=None, variant_models=None, show=None):
     """Img2Img: фото -> иллюстрация. Исходник: src_path или файл из ячейки Upload. Возвращает (картинка, json)."""
@@ -157,6 +172,7 @@ def run_img2img(config, defaults, user_prompt, seed, strength, base_style, color
     return paths
 
 
+@_stops_on_missing_input
 def run_controlnet(config, defaults, user_prompt, seed, low_thr, high_thr, base_style, color_tone, style_extra,
                    negative, control_path=None, get_pipe=None, save=None, variant_models=None, canny=None, show=None):
     """ControlNet (Canny): контуры фото задают композицию. Возвращает (картинка, json)."""
@@ -194,6 +210,7 @@ def run_controlnet(config, defaults, user_prompt, seed, low_thr, high_thr, base_
     return paths
 
 
+@_stops_on_missing_input
 def run_inpaint(config, defaults, user_prompt, seed, strength, base_style, color_tone, style_extra, negative,
                 src_path=None, mask_path=None, get_pipe=None, save=None, variant_models=None, show=None):
     """Inpainting: белое в маске заменяется, чёрное сохраняется. Возвращает (картинка, json)."""
@@ -230,6 +247,7 @@ def run_inpaint(config, defaults, user_prompt, seed, strength, base_style, color
     return paths
 
 
+@_stops_on_missing_input
 def run_upscale(config, in_path, seed, prompt="", get_pipe=None, save=None, variant_models=None, show=None):
     """Апскейл x4. Возвращает путь к сохранённой картинке."""
     import torch
@@ -238,8 +256,7 @@ def run_upscale(config, in_path, seed, prompt="", get_pipe=None, save=None, vari
         from scripts.loaders import get_upscale_pipe as get_pipe
     save, variant_models = _tools(get_pipe, save, variant_models)
 
-    if not in_path:
-        raise ValueError("Нужно указать путь к изображению для апскейла (in_path)")
+    in_path = _need_file(in_path, "upscale", "in_path", "Укажи путь к изображению для апскейла.")
     pipe = get_pipe(variant_models[config["MODEL_VARIANT"]]["upscale"], config["DEVICE"], config["DTYPE"])
     out = pipe(image=Image.open(in_path).convert("RGB"), prompt=prompt, generator=torch.manual_seed(seed))
     meta = {"mode": "upscale_x4", "prompt": prompt, "seed": seed, "timestamp": time.strftime("%Y%m%d_%H%M%S")}

@@ -132,6 +132,19 @@ class ModesBase(unittest.TestCase):
         Image.new("RGB", size, color).save(p)
         return p
 
+    def assertStops(self, call, fragment):
+        """Нет входного файла: одна строка с подсказкой, без traceback; генерация не стартует, ничего не сохранено."""
+        import contextlib
+        import io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            result = call()
+        self.assertIsNone(result)
+        self.assertIn("⚠️", buf.getvalue())
+        self.assertIn(fragment, buf.getvalue())
+        self.assertEqual(len([l for l in buf.getvalue().splitlines() if l.strip()]), 1)
+        self.assertEqual((self.pipe.calls, self.saved), ([], []))
+
     def get_pipe(self, *a):
         self.pipe_args.append(a)
         return self.pipe
@@ -176,10 +189,8 @@ class Img2ImgTest(ModesBase):
     def test_missing_source_gives_clear_errors(self):
         from scripts import notebook_uploads
         notebook_uploads.PATHS.clear()
-        with self.assertRaisesRegex(ValueError, "Upload"):
-            self.run_it(src_path=None)
-        with self.assertRaises(FileNotFoundError):
-            self.run_it(src_path=os.path.join(self.tmp.name, "nope.png"))
+        self.assertStops(lambda: self.run_it(src_path=None), "Upload")
+        self.assertStops(lambda: self.run_it(src_path=os.path.join(self.tmp.name, "nope.png")), "nope.png")
 
     def test_source_defaults_to_uploaded_path(self):
         from scripts import notebook_uploads
@@ -234,8 +245,8 @@ class ControlNetTest(ModesBase):
     def test_missing_control_image(self):
         from scripts import notebook_uploads
         notebook_uploads.PATHS.clear()
-        with self.assertRaisesRegex(ValueError, "Upload"):
-            self.run_it(control_path=None)
+        self.assertStops(lambda: self.run_it(control_path=None), "Upload")
+        self.assertStops(lambda: self.run_it(control_path=os.path.join(self.tmp.name, "nope.png")), "nope.png")
 
 
 class InpaintTest(ModesBase):
@@ -263,12 +274,9 @@ class InpaintTest(ModesBase):
     def test_missing_image_or_mask(self):
         from scripts import notebook_uploads
         notebook_uploads.PATHS.clear()
-        with self.assertRaisesRegex(ValueError, "image"):
-            self.run_it(src_path=None)
-        with self.assertRaisesRegex(ValueError, "mask"):
-            self.run_it(mask_path=None)
-        with self.assertRaises(FileNotFoundError):
-            self.run_it(mask_path=os.path.join(self.tmp.name, "nope.png"))
+        self.assertStops(lambda: self.run_it(src_path=None), "image")
+        self.assertStops(lambda: self.run_it(mask_path=None), "mask")
+        self.assertStops(lambda: self.run_it(mask_path=os.path.join(self.tmp.name, "nope.png")), "nope.png")
 
 
 class UpscaleTest(ModesBase):
@@ -287,8 +295,17 @@ class UpscaleTest(ModesBase):
         self.assertEqual(os.path.basename(path), "upscale.png")
 
     def test_empty_path_is_an_error(self):
-        with self.assertRaisesRegex(ValueError, "in_path"):
-            self.run_it(in_path="")
+        self.assertStops(lambda: self.run_it(in_path=""), "in_path")
+        self.assertStops(lambda: self.run_it(in_path=os.path.join(self.tmp.name, "nope.png")), "nope.png")
+
+
+class OtherErrorsStillRaiseTest(ModesBase):
+    def test_a_failure_inside_the_pipeline_is_not_hidden(self):
+        # дружелюбная остановка только для «нет входного файла»; настоящие сбои видны с traceback
+        def boom(*a):
+            raise RuntimeError("CUDA out of memory")
+        with self.assertRaisesRegex(RuntimeError, "out of memory"):
+            generate.run_upscale(config=self.config, in_path=self.src, seed=1, get_pipe=boom, save=self.save)
 
 
 # ───────────────────────── Показ результата под ячейкой ─────────────────────────
@@ -356,8 +373,11 @@ class ShowResultTest(ModesBase):
         finally:
             for k, v in old.items():
                 sys.modules.pop(k, None) if v is None else sys.modules.__setitem__(k, v)
-        self.assertEqual(len(shown), 2)
-        self.assertEqual(shown[1], ("HTML", "<a>go</a>"))
+        # миниатюра и кнопка в одном блоке: кнопка сразу под миниатюрой, а не отдельной строкой ниже
+        self.assertEqual(len(shown), 1)
+        self.assertEqual(shown[0][0], "HTML")
+        self.assertIn("<img", shown[0][1])
+        self.assertLess(shown[0][1].index("<img"), shown[0][1].index("<a>go</a>"))
 
     def test_showing_does_not_break_generation_outside_a_notebook(self):
         # без IPython (как в этих тестах и в обычном python) показ молча пропускается

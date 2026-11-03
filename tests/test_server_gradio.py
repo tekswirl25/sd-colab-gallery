@@ -39,6 +39,7 @@ class Comp:
     click = _on("click")
     load = _on("load")
     select = _on("select")
+    change = _on("change")
     then = _on("then")
 
     def launch(self, **kw):
@@ -47,7 +48,7 @@ class Comp:
 
 def fake_gradio():
     m = types.ModuleType("gradio")
-    for name in ("Blocks", "Tab", "Tabs", "Row", "Gallery", "Button", "Checkbox", "Textbox", "File", "State", "Markdown"):
+    for name in ("Blocks", "Tab", "Tabs", "Row", "Gallery", "Button", "Checkbox", "Textbox", "File", "State", "Markdown", "HTML", "Dropdown"):
         setattr(m, name, type(name, (Comp,), {}))
     m.update = lambda **kw: ("update", kw)
     m.skip = lambda: ("skip", {})
@@ -92,8 +93,18 @@ class ServerTest(unittest.TestCase):
     def comps(self, kind, label=None):
         return [c for c in Comp.registry if type(c).__name__ == kind and (label is None or c.kw.get("label") == label)]
 
-    def gallery(self, tab):
-        return self.comps("Gallery", f"{tab} results")[0]
+
+    def by_id(self, kind, elem_id):
+        return [c for c in self.comps(kind) if c.kw.get("elem_id") == elem_id][0]
+
+    def button(self, key, text):
+        """Кнопка вкладки режима по тексту: кнопки создаются по порядку вкладок text2img, img2img, ..."""
+        keys = ["text2img", "img2img", "controlnet", "inpaint", "upscale"]
+        found = [c for c in self.comps("Button") if c.args and c.args[0] == text]
+        return found[keys.index(key)]
+
+    def png(self, mode, name):
+        return os.path.join(self.out, mode, name + ".png")
 
     def test_there_is_a_gallery_tab_for_every_mode_including_upscale(self):
         self.start()
@@ -101,66 +112,130 @@ class ServerTest(unittest.TestCase):
         for name in ("Text2Img", "Img2Img", "ControlNet", "Inpaint", "Upscale"):
             self.assertIn(f"{name} Gallery", tabs)
 
-    def test_gallery_shows_thumbnails_with_seed_captions_newest_first(self):
-        self.add_image("text2img", "text2img_20261030_100000", {"seed": 11, "prompt": "a cat"})
-        self.add_image("text2img", "text2img_20261030_110000", {"seed": 12, "prompt": "a dog"})
-        self.start()
-        value = self.gallery("Text2Img").kw["value"]
-        self.assertEqual(len(value), 2)
-        self.assertIn("seed 12", value[0][1])
-        self.assertIn("seed 11", value[1][1])
-        self.assertLessEqual(max(value[0][0].size), 256)  # миниатюра, не оригинал
-
-    def test_selecting_an_image_gives_seed_prompt_params_and_the_original_file(self):
-        self.add_image("text2img", "text2img_20261030_100000", {"seed": 11, "prompt": "a cat", "steps": 30})
-        self.add_image("text2img", "text2img_20261030_110000", {"seed": 12, "prompt": "a dog"})
-        self.start()
-        gallery = self.gallery("Text2Img")
-        (kind, fn, inputs, outputs), = [h for h in gallery.handlers if h[0] == "select"]
-        state = self.comps("State")[0]
-        self.assertIn(state, inputs)
-        seed, prompt, params, file_path = fn(state.kw["value"], self.gr.SelectData(index=1))
-        self.assertEqual((seed, prompt), ("11", "a cat"))
-        self.assertIn('"steps": 30', params)
-        self.assertTrue(file_path.endswith("text2img_20261030_100000.png"))
-        self.assertTrue(os.path.exists(file_path))
-
-    def test_detail_boxes_are_read_only_with_copy_buttons_and_a_download_file(self):
-        self.start()
-        for label in ("Seed", "Prompt", "Параметры"):
-            box = self.comps("Textbox", label)[0]
-            self.assertFalse(box.kw.get("interactive", True), label)
-            self.assertTrue(box.kw.get("show_copy_button"), label)
-        self.assertTrue(self.comps("File"))
-
-    def test_server_still_builds_when_gradio_has_no_copy_button_option(self):
-        Comp.reject_copy_button = True
-        self.start()  # не должно упасть: ячейка с копированием откатывается на обычное поле
-        self.assertTrue(self.comps("Textbox", "Seed"))
-
-    def test_refresh_returns_gallery_and_fresh_items(self):
-        self.start()
-        self.add_image("text2img", "text2img_20261030_120000", {"seed": 99})
-        refresh = next(c for c in self.comps("Button") if c.args and c.args[0] == "🔄 Refresh")
-        # первая вкладка Text2Img: ищем кнопку этой вкладки по порядку создания
-        text2img_refresh = [c for c in self.comps("Button") if c.args and c.args[0] == "🔄 Refresh"][0]
-        (kind, fn, inputs, outputs), = text2img_refresh.handlers[:1]
-        value, items = fn()
-        self.assertIn("seed 99", value[0][1])
-        self.assertEqual(items[0]["seed"], 99)
-
-    def load_handler(self):
-        demo = self.comps("Blocks")[0]
-        (kind, fn, inputs, outputs), = [h for h in demo.handlers if h[0] == "load"]
-        return fn, outputs
-
     def test_tabs_have_stable_ids_so_a_link_can_open_the_right_one(self):
         self.start()
         ids = [t.kw.get("id") for t in self.comps("Tab")]
         for key in ("text2img", "img2img", "controlnet", "inpaint", "upscale"):
             self.assertIn(key, ids)
 
-    def test_link_opens_the_tab_and_the_image_details(self):
+    def test_no_component_depends_on_the_gradio_file_server(self):
+        # Gallery, File и Image отдают картинки через файловый сервер Gradio, в Colab они приходят битыми
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+        self.start()
+        for kind in ("Gallery", "File", "Image"):
+            self.assertEqual(self.comps(kind), [], kind)
+
+    def test_grid_shows_embedded_thumbnails_newest_first(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 11, "prompt": "a cat"})
+        self.add_image("text2img", "text2img_20261030_110000", {"seed": 12, "prompt": "a dog"})
+        self.start()
+        html = self.by_id("HTML", "text2img_grid").kw["value"]
+        self.assertEqual(html.count("data:image/jpeg;base64,"), 2)
+        self.assertLess(html.index("seed 12"), html.index("seed 11"))
+
+    def test_picker_lists_every_frame_newest_first_and_starts_on_the_newest(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 11})
+        self.add_image("text2img", "text2img_20261030_110000", {"seed": 12})
+        self.start()
+        pick = self.by_id("Dropdown", "text2img_pick")
+        self.assertEqual([v for _, v in pick.kw["choices"]], ["text2img_20261030_110000", "text2img_20261030_100000"])
+        self.assertEqual(pick.kw["value"], "text2img_20261030_110000")
+
+    def test_viewer_starts_on_the_newest_frame(self):
+        self.add_image("text2img", "text2img_20261030_110000", {"seed": 12})
+        self.start()
+        self.assertIn("data:image/jpeg;base64,", self.by_id("HTML", "text2img_view").kw["value"])
+
+    def handlers(self, comp, kind):
+        return [h for h in comp.handlers if h[0] == kind]
+
+    def test_choosing_a_frame_shows_it_with_seed_prompt_params_and_a_download(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 11, "prompt": "a cat", "steps": 30})
+        self.add_image("text2img", "text2img_20261030_110000", {"seed": 12, "prompt": "a dog"})
+        self.start()
+        pick = self.by_id("Dropdown", "text2img_pick")
+        (kind, fn, inputs, outputs), = self.handlers(pick, "change")
+        state = self.comps("State")[0]
+        self.assertIn(state, inputs)
+        view, seed, prompt, params = fn(state.kw["value"], "text2img_20261030_100000")
+        self.assertEqual((seed, prompt), ("11", "a cat"))
+        self.assertIn('"steps": 30', params)
+        self.assertIn('download="text2img_20261030_100000.png"', view)
+
+    def test_choosing_nothing_clears_the_viewer(self):
+        self.start()
+        pick = self.by_id("Dropdown", "text2img_pick")
+        (kind, fn, inputs, outputs), = self.handlers(pick, "change")
+        self.assertEqual(fn([], None), ("", "", "", ""))
+
+    def test_detail_boxes_are_read_only_with_copy_buttons(self):
+        self.start()
+        for label in ("Seed", "Prompt", "Параметры"):
+            box = self.comps("Textbox", label)[0]
+            self.assertFalse(box.kw.get("interactive", True), label)
+            self.assertTrue(box.kw.get("show_copy_button"), label)
+
+    def test_server_still_builds_when_gradio_has_no_copy_button_option(self):
+        Comp.reject_copy_button = True
+        self.start()  # не должно упасть: ячейка с копированием откатывается на обычное поле
+        self.assertTrue(self.comps("Textbox", "Seed"))
+
+    def test_next_and_previous_step_through_the_frames_one_after_another(self):
+        for h in (10, 11, 12):
+            self.add_image("text2img", f"text2img_20261030_{h}0000", {"seed": h})
+        self.start()
+        state = self.comps("State")[0].kw["value"]
+        nxt = self.handlers(self.button("text2img", "Вперёд ▶"), "click")[0]
+        prev = self.handlers(self.button("text2img", "◀ Назад"), "click")[0]
+        self.assertEqual(nxt[1](state, "text2img_20261030_120000"), "text2img_20261030_110000")
+        self.assertEqual(prev[1](state, "text2img_20261030_110000"), "text2img_20261030_120000")
+        self.assertEqual(self.by_id("Dropdown", "text2img_pick"), nxt[3] if not isinstance(nxt[3], list) else nxt[3][0])
+
+    def test_refresh_returns_fresh_grid_items_and_picker(self):
+        self.start()
+        self.add_image("text2img", "text2img_20261030_120000", {"seed": 99})
+        (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "🔄 Refresh"), "click")
+        grid, items, pick = fn()
+        self.assertIn("seed 99", grid)
+        self.assertEqual(items[0]["seed"], 99)
+        self.assertEqual(pick[1]["value"], "text2img_20261030_120000")
+
+    def test_delete_selected_needs_confirmation_and_removes_only_that_frame(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+        self.add_image("text2img", "text2img_20261030_110000", {"seed": 2})
+        self.start()
+        state = self.comps("State")[0].kw["value"]
+        (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "🗑️ Delete selected"), "click")
+        fn(False, "text2img_20261030_110000", state)
+        self.assertTrue(os.path.exists(self.png("text2img", "text2img_20261030_110000")))
+        grid, items, pick, confirm = fn(True, "text2img_20261030_110000", state)
+        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_110000")))
+        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_110000") + ".json"))
+        self.assertTrue(os.path.exists(self.png("text2img", "text2img_20261030_100000")))
+        self.assertEqual([i["name"] for i in items], ["text2img_20261030_100000"])
+        self.assertEqual(pick[1]["value"], "text2img_20261030_100000")  # просмотр переходит на соседний кадр
+        self.assertFalse(confirm)  # подтверждение сбрасывается
+
+    def test_delete_all_needs_confirmation(self):
+        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+        self.add_image("text2img", "text2img_20261030_110000", {"seed": 2})
+        self.start()
+        state = self.comps("State")[0].kw["value"]
+        (kind, fn, inputs, outputs), = self.handlers(self.button("text2img", "🗑️ Delete all"), "click")
+        fn(False, state)
+        self.assertTrue(os.path.exists(self.png("text2img", "text2img_20261030_100000")))
+        grid, items, pick, confirm = fn(True, state)
+        self.assertEqual(items, [])
+        self.assertFalse(os.path.exists(self.png("text2img", "text2img_20261030_100000")))
+        self.assertIsNone(pick[1]["value"])
+
+    def load_handler(self):
+        demo = self.comps("Blocks")[0]
+        found = [h for h in self.handlers(demo, "load") if isinstance(h[3], list) and len(h[3]) > 1]
+        (kind, fn, inputs, outputs), = found
+        return fn, outputs
+
+    def test_link_opens_the_tab_and_selects_the_frame(self):
         self.add_image("text2img", "text2img_20261030_100000", {"seed": 11, "prompt": "a cat"})
         self.add_image("text2img", "text2img_20261030_110000", {"seed": 12, "prompt": "a dog"})
         self.start()
@@ -168,14 +243,13 @@ class ServerTest(unittest.TestCase):
         req = types.SimpleNamespace(query_params={"mode": "text2img", "img": "text2img_20261030_100000"})
         res = fn(req)
         self.assertEqual(len(res), len(outputs))
-        self.assertEqual(res[0], ("update", {"selected": "text2img"}))            # вкладка
-        text2img = res[1:7]                                              # галерея, state, seed, prompt, params, file
-        self.assertEqual(text2img[0][0], "update")
-        self.assertEqual(text2img[0][1]["selected_index"], 1)            # вторая по порядку (новые первыми)
-        self.assertEqual(len(text2img[0][1]["value"]), 2)                # галерея заодно обновилась
-        self.assertEqual(len(text2img[1]), 2)                            # свежий список для выбора картинки
-        self.assertEqual((text2img[2], text2img[3]), ("11", "a cat"))
-        self.assertTrue(text2img[5].endswith("text2img_20261030_100000.png"))
+        self.assertEqual(res[0], ("update", {"selected": "text2img"}))
+        pick = res[1]  # первые в группе режима: выбор кадра
+        self.assertEqual(pick[1]["value"], "text2img_20261030_100000")
+        group = res[1:8]  # pick, state, grid, view, seed, prompt, params
+        self.assertEqual(len(group[1]), 2)
+        self.assertIn("data:image/jpeg;base64,", group[3])
+        self.assertEqual((group[4], group[5]), ("11", "a cat"))
 
     def test_link_to_an_unknown_image_or_mode_changes_nothing(self):
         self.add_image("text2img", "text2img_20261030_100000", {"seed": 11})
@@ -186,15 +260,19 @@ class ServerTest(unittest.TestCase):
             self.assertEqual(len(res), len(outputs))
             self.assertTrue(all(r == ("skip", {}) for r in res), query)
 
-    def test_delete_all_needs_confirmation(self):
-        self.add_image("text2img", "text2img_20261030_100000", {"seed": 1})
+    def test_logs_are_shown_on_open_and_when_the_logs_tab_is_chosen_without_blank_lines(self):
+        self.mod.get_last_logs = lambda n: ["first\n", "second\n"]
         self.start()
-        delete = [c for c in self.comps("Button") if c.args and c.args[0].endswith("Delete all")][0]
-        (kind, fn, inputs, outputs) = delete.handlers[0]
-        fn(False)
-        self.assertTrue(os.path.exists(os.path.join(self.out, "text2img", "text2img_20261030_100000.png")))
-        fn(True)
-        self.assertFalse(os.path.exists(os.path.join(self.out, "text2img", "text2img_20261030_100000.png")))
+        logs_box = self.comps("Textbox", "Last 10 log lines")[0]
+        demo = self.comps("Blocks")[0]
+        loads = [h for h in self.handlers(demo, "load") if h[3] == [logs_box] or h[3] == logs_box]
+        self.assertEqual(len(loads), 1)
+        self.assertEqual(loads[0][1](), "first\nsecond")
+        logs_tab = [c for c in self.comps("Tab") if c.kw.get("id") == "logs"][0]
+        (kind, fn, inputs, outputs), = self.handlers(logs_tab, "select")
+        self.assertEqual(fn(), "first\nsecond")
+        refresh = [c for c in self.comps("Button") if c.args and c.args[0] == "🔄 Refresh logs"][0]
+        self.assertEqual(refresh.handlers[0][1](), "first\nsecond")
 
 
 if __name__ == "__main__":

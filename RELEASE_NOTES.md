@@ -591,3 +591,8 @@ Base structure ready for SDXL / Turbo / SD1.5 with Flask gallery.
 
 * Merge pull request #15 from tekswirl25/claude/festive-brown-dm3hgf ([99bb1ed](https://github.com/tekswirl25/sd-colab-gallery/commit/99bb1ed59876b5596a1d3aaf60087ea4d2181e09))
 
+
+## v0.1.103 (2026-11-03)
+
+* Merge pull request #16 from tekswirl25/claude/festive-brown-dm3hgf ([26e587a](https://github.com/tekswirl25/sd-colab-gallery/commit/26e587a319fa02e8ad59cb984e822cc744ddd223))
+
